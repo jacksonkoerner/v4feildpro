@@ -151,16 +151,51 @@
 
         /* Debug console */
         .debug-log { font-family: 'SF Mono', Monaco, 'Courier New', monospace; font-size: 11px; }
+
+        /* Scrollable flow screens */
+        .flow-screen {
+            height: 100vh;
+            height: 100dvh; /* Dynamic viewport height for mobile */
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Permission step content - scrollable area */
+        .step-content-scroll {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 140px; /* Space for fixed button */
+        }
+
+        /* Fixed bottom action area */
+        .step-actions-fixed {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            padding: 16px 20px;
+            padding-bottom: max(16px, env(safe-area-inset-bottom));
+            border-top: 1px solid #e5e5e5;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+            z-index: 100;
+        }
+
+        .step-actions-fixed .action-container {
+            max-width: 32rem;
+            margin: 0 auto;
+        }
     </style>
 </head>
-<body class="bg-dot-navy min-h-screen overflow-hidden">
+<body class="bg-dot-navy min-h-screen overflow-x-hidden">
     <div class="header-stripe"></div>
 
     <div class="max-w-lg mx-auto min-h-screen flex flex-col relative">
 
         <!-- ==================== SCREEN 0: WELCOME ==================== -->
-        <div id="screen-welcome" class="flow-screen active flex flex-col min-h-screen">
-            <div class="flex-1 flex flex-col items-center justify-center p-8 text-center">
+        <div id="screen-welcome" class="flow-screen active flex flex-col">
+            <div class="flex-1 flex flex-col items-center justify-center p-8 pb-24 text-center overflow-y-auto">
                 <!-- Logo -->
                 <div class="w-24 h-24 bg-dot-yellow flex items-center justify-center mb-6">
                     <i class="fas fa-hard-hat text-dot-navy text-4xl"></i>
@@ -209,16 +244,16 @@
         </div>
 
         <!-- ==================== SCREEN 1: MICROPHONE ==================== -->
-        <div id="screen-mic" class="flow-screen flex flex-col min-h-screen bg-slate-100">
+        <div id="screen-mic" class="flow-screen flex flex-col bg-slate-100">
             <!-- Header with stepper -->
-            <header class="bg-dot-navy text-white p-4">
+            <header class="bg-dot-navy text-white p-4 flex-shrink-0">
                 <div id="stepper-mic" class="flex items-center justify-center gap-2 mb-4"></div>
                 <p class="text-center text-slate-400 text-sm">Step 1 of 4</p>
             </header>
 
-            <main class="flex-1 flex flex-col items-center justify-center p-6">
+            <main class="flex-1 flex flex-col items-center p-6 pb-36 overflow-y-auto">
                 <!-- Pre-permission content -->
-                <div id="mic-pre" class="text-center">
+                <div id="mic-pre" class="text-center mt-auto mb-auto">
                     <div class="w-28 h-28 bg-dot-navy rounded-full flex items-center justify-center mx-auto mb-6 icon-pulse">
                         <i class="fas fa-microphone text-dot-yellow text-5xl"></i>
                     </div>
@@ -247,7 +282,7 @@
                 </div>
 
                 <!-- Loading state -->
-                <div id="mic-loading" class="text-center hidden">
+                <div id="mic-loading" class="text-center hidden mt-auto mb-auto">
                     <div class="w-28 h-28 bg-dot-blue rounded-full flex items-center justify-center mx-auto mb-6">
                         <i class="fas fa-spinner text-white text-4xl spin"></i>
                     </div>
@@ -256,7 +291,7 @@
                 </div>
 
                 <!-- Success state -->
-                <div id="mic-success" class="text-center hidden">
+                <div id="mic-success" class="text-center hidden mt-auto mb-auto">
                     <div class="w-28 h-28 bg-safety-green rounded-full flex items-center justify-center mx-auto mb-6">
                         <i class="fas fa-check text-white text-5xl check-bounce"></i>
                     </div>
@@ -266,7 +301,7 @@
                 </div>
 
                 <!-- Error state -->
-                <div id="mic-error" class="text-center hidden">
+                <div id="mic-error" class="text-center hidden mt-auto mb-auto">
                     <div class="w-28 h-28 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
                         <i class="fas fa-microphone-slash text-white text-5xl"></i>
                     </div>
@@ -290,15 +325,15 @@
         </div>
 
         <!-- ==================== SCREEN 2: CAMERA ==================== -->
-        <div id="screen-cam" class="flow-screen flex flex-col min-h-screen bg-slate-100">
-            <header class="bg-dot-navy text-white p-4">
+        <div id="screen-cam" class="flow-screen flex flex-col bg-slate-100">
+            <header class="bg-dot-navy text-white p-4 flex-shrink-0">
                 <div id="stepper-cam" class="flex items-center justify-center gap-2 mb-4"></div>
                 <p class="text-center text-slate-400 text-sm">Step 2 of 4</p>
             </header>
 
-            <main class="flex-1 flex flex-col items-center justify-center p-6">
+            <main class="flex-1 flex flex-col items-center p-6 pb-36 overflow-y-auto">
                 <!-- Pre-permission content -->
-                <div id="cam-pre" class="text-center">
+                <div id="cam-pre" class="text-center mt-auto mb-auto">
                     <div class="w-28 h-28 bg-dot-orange rounded-full flex items-center justify-center mx-auto mb-6 icon-pulse">
                         <i class="fas fa-camera text-white text-5xl"></i>
                     </div>
@@ -327,7 +362,7 @@
                 </div>
 
                 <!-- Loading state -->
-                <div id="cam-loading" class="text-center hidden">
+                <div id="cam-loading" class="text-center hidden mt-auto mb-auto">
                     <div class="w-28 h-28 bg-dot-orange rounded-full flex items-center justify-center mx-auto mb-6">
                         <i class="fas fa-spinner text-white text-4xl spin"></i>
                     </div>
@@ -336,7 +371,7 @@
                 </div>
 
                 <!-- Success state -->
-                <div id="cam-success" class="text-center hidden">
+                <div id="cam-success" class="text-center hidden mt-auto mb-auto">
                     <div class="w-28 h-28 bg-safety-green rounded-full flex items-center justify-center mx-auto mb-6">
                         <i class="fas fa-check text-white text-5xl check-bounce"></i>
                     </div>
@@ -346,7 +381,7 @@
                 </div>
 
                 <!-- Error state -->
-                <div id="cam-error" class="text-center hidden">
+                <div id="cam-error" class="text-center hidden mt-auto mb-auto">
                     <div class="w-28 h-28 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
                         <i class="fas fa-camera-slash text-white text-5xl"></i>
                     </div>
@@ -370,15 +405,15 @@
         </div>
 
         <!-- ==================== SCREEN 3: LOCATION ==================== -->
-        <div id="screen-loc" class="flow-screen flex flex-col min-h-screen bg-slate-100">
-            <header class="bg-dot-navy text-white p-4">
+        <div id="screen-loc" class="flow-screen flex flex-col bg-slate-100">
+            <header class="bg-dot-navy text-white p-4 flex-shrink-0">
                 <div id="stepper-loc" class="flex items-center justify-center gap-2 mb-4"></div>
                 <p class="text-center text-slate-400 text-sm">Step 3 of 4</p>
             </header>
 
-            <main class="flex-1 flex flex-col items-center justify-center p-6">
+            <main class="flex-1 flex flex-col items-center p-6 pb-36 overflow-y-auto">
                 <!-- Pre-permission content -->
-                <div id="loc-pre" class="text-center">
+                <div id="loc-pre" class="text-center mt-auto mb-auto">
                     <div class="w-28 h-28 bg-safety-green rounded-full flex items-center justify-center mx-auto mb-6 icon-pulse">
                         <i class="fas fa-location-dot text-white text-5xl"></i>
                     </div>
@@ -407,7 +442,7 @@
                 </div>
 
                 <!-- Loading state -->
-                <div id="loc-loading" class="text-center hidden">
+                <div id="loc-loading" class="text-center hidden mt-auto mb-auto">
                     <div class="w-28 h-28 bg-safety-green rounded-full flex items-center justify-center mx-auto mb-6">
                         <i class="fas fa-spinner text-white text-4xl spin"></i>
                     </div>
@@ -416,7 +451,7 @@
                 </div>
 
                 <!-- Success state -->
-                <div id="loc-success" class="text-center hidden">
+                <div id="loc-success" class="text-center hidden mt-auto mb-auto">
                     <div class="w-28 h-28 bg-safety-green rounded-full flex items-center justify-center mx-auto mb-6">
                         <i class="fas fa-check text-white text-5xl check-bounce"></i>
                     </div>
@@ -426,7 +461,7 @@
                 </div>
 
                 <!-- Error state -->
-                <div id="loc-error" class="text-center hidden">
+                <div id="loc-error" class="text-center hidden mt-auto mb-auto">
                     <div class="w-28 h-28 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
                         <i class="fas fa-location-crosshairs text-white text-5xl"></i>
                     </div>
@@ -450,15 +485,15 @@
         </div>
 
         <!-- ==================== SCREEN 4: SPEECH RECOGNITION ==================== -->
-        <div id="screen-speech" class="flow-screen flex flex-col min-h-screen bg-slate-100">
-            <header class="bg-dot-navy text-white p-4">
+        <div id="screen-speech" class="flow-screen flex flex-col bg-slate-100">
+            <header class="bg-dot-navy text-white p-4 flex-shrink-0">
                 <div id="stepper-speech" class="flex items-center justify-center gap-2 mb-4"></div>
                 <p class="text-center text-slate-400 text-sm">Step 4 of 4</p>
             </header>
 
-            <main class="flex-1 flex flex-col items-center justify-center p-6 overflow-y-auto">
+            <main class="flex-1 flex flex-col items-center p-6 pb-36 overflow-y-auto">
                 <!-- Pre-permission content -->
-                <div id="speech-pre" class="text-center">
+                <div id="speech-pre" class="text-center mt-auto mb-auto">
                     <div class="w-28 h-28 bg-violet-600 rounded-full flex items-center justify-center mx-auto mb-6 icon-pulse">
                         <i class="fas fa-comment-dots text-white text-5xl"></i>
                     </div>
@@ -487,7 +522,7 @@
                         </p>
                     </div>
 
-                    <button onclick="requestSpeechPermission()" class="w-full max-w-xs py-4 bg-violet-600 hover:bg-violet-700 text-white font-bold uppercase transition-all">
+                    <button id="speech-test-btn" onclick="requestSpeechPermission()" class="w-full max-w-xs py-4 bg-violet-600 hover:bg-violet-700 text-white font-bold uppercase transition-all">
                         <i class="fas fa-comment-dots mr-2"></i>Test Speech Recognition
                     </button>
 
@@ -497,7 +532,7 @@
                 </div>
 
                 <!-- Loading/Testing state -->
-                <div id="speech-loading" class="text-center hidden">
+                <div id="speech-loading" class="text-center hidden mt-auto mb-auto">
                     <div class="w-28 h-28 bg-violet-600 rounded-full flex items-center justify-center mx-auto mb-6">
                         <i class="fas fa-ear-listen text-white text-4xl"></i>
                     </div>
@@ -506,10 +541,13 @@
                     <div class="bg-violet-50 border border-violet-200 p-4 rounded max-w-xs mx-auto">
                         <p id="speech-transcript" class="text-sm text-slate-700 italic min-h-[40px]">Waiting for speech...</p>
                     </div>
+                    <button onclick="cancelSpeechTest()" class="mt-4 text-slate-500 text-sm underline hover:text-slate-600">
+                        Cancel
+                    </button>
                 </div>
 
                 <!-- Success state -->
-                <div id="speech-success" class="text-center hidden">
+                <div id="speech-success" class="text-center hidden mt-auto mb-auto">
                     <div class="w-28 h-28 bg-safety-green rounded-full flex items-center justify-center mx-auto mb-6">
                         <i class="fas fa-check text-white text-5xl check-bounce"></i>
                     </div>
@@ -519,7 +557,7 @@
                 </div>
 
                 <!-- Error state with iOS help -->
-                <div id="speech-error" class="text-center hidden">
+                <div id="speech-error" class="text-center hidden mt-auto mb-auto">
                     <div class="w-28 h-28 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
                         <i class="fas fa-comment-slash text-white text-5xl"></i>
                     </div>
@@ -600,8 +638,8 @@
         </div>
 
         <!-- ==================== SCREEN 5: SUMMARY ==================== -->
-        <div id="screen-summary" class="flow-screen flex flex-col min-h-screen bg-slate-100">
-            <header class="bg-dot-navy text-white p-6 text-center">
+        <div id="screen-summary" class="flow-screen flex flex-col bg-slate-100">
+            <header class="bg-dot-navy text-white p-6 text-center flex-shrink-0">
                 <div class="w-16 h-16 bg-dot-yellow flex items-center justify-center mx-auto mb-4 rounded-full">
                     <i id="summary-header-icon" class="fas fa-clipboard-check text-dot-navy text-2xl"></i>
                 </div>
@@ -609,7 +647,7 @@
                 <p id="summary-subtitle" class="text-sm text-slate-400 mt-1">Here's what's enabled</p>
             </header>
 
-            <main class="flex-1 p-4 space-y-3 overflow-y-auto">
+            <main class="flex-1 p-4 pb-6 space-y-3 overflow-y-auto">
                 <!-- Result cards -->
                 <div id="result-mic" class="result-card bg-white border-2 border-slate-200 p-4 flex items-center gap-4">
                     <div id="result-mic-icon" class="w-12 h-12 bg-slate-200 flex items-center justify-center rounded-full flex-shrink-0">
@@ -708,8 +746,8 @@
         </div>
 
         <!-- ==================== MANUAL SETUP SCREEN ==================== -->
-        <div id="screen-manual" class="flow-screen flex flex-col min-h-screen bg-slate-100">
-            <header class="bg-dot-navy text-white p-6 text-center">
+        <div id="screen-manual" class="flow-screen flex flex-col bg-slate-100">
+            <header class="bg-dot-navy text-white p-6 text-center flex-shrink-0">
                 <div class="w-16 h-16 bg-dot-yellow flex items-center justify-center mx-auto mb-4">
                     <i class="fas fa-cog text-dot-navy text-2xl"></i>
                 </div>
@@ -717,7 +755,7 @@
                 <p class="text-sm text-slate-400 mt-1">Configure permissions individually</p>
             </header>
 
-            <main class="flex-1 p-4 space-y-3 overflow-y-auto">
+            <main class="flex-1 p-4 pb-6 space-y-3 overflow-y-auto">
                 <!-- Device Info -->
                 <div class="bg-slate-800 border border-slate-700 p-3 rounded">
                     <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Device Detection</p>
@@ -924,7 +962,6 @@
         };
 
         let currentScreen = 'welcome';
-        let recognition = null;
         let debugLogs = [];
 
         // ============ DEVICE DETECTION ============
@@ -1378,44 +1415,103 @@
         }
 
         // ============ SPEECH RECOGNITION ============
+        // Lazy-loaded speech recognition with proper cleanup
+        let speechRecognition = null;
+        let speechTimeout = null;
+        let isSpeechTesting = false;
+        let speechHasResult = false;
+
+        function initSpeechRecognition() {
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SR) return null;
+
+            const rec = new SR();
+            rec.continuous = false;
+            rec.interimResults = true;
+            rec.lang = 'en-US';
+            rec.maxAlternatives = 1;
+            return rec;
+        }
+
+        function cleanupSpeechRecognition() {
+            if (speechTimeout) {
+                clearTimeout(speechTimeout);
+                speechTimeout = null;
+            }
+            if (speechRecognition) {
+                try {
+                    speechRecognition.abort();
+                } catch (e) {
+                    // Ignore errors during cleanup
+                }
+            }
+            isSpeechTesting = false;
+            speechHasResult = false;
+        }
+
         async function requestSpeechPermission() {
+            // Prevent double-clicks
+            if (isSpeechTesting) {
+                log('Speech test already in progress, ignoring', 'warn');
+                return;
+            }
+
             const preEl = document.getElementById('speech-pre');
             const loadingEl = document.getElementById('speech-loading');
             const successEl = document.getElementById('speech-success');
-            const errorEl = document.getElementById('speech-error');
             const transcript = document.getElementById('speech-transcript');
+            const testBtn = document.getElementById('speech-test-btn');
+
+            // Disable button immediately for responsiveness
+            if (testBtn) testBtn.disabled = true;
+
+            // Cleanup any previous test
+            cleanupSpeechRecognition();
+
+            isSpeechTesting = true;
+            speechHasResult = false;
 
             preEl.classList.add('hidden');
             loadingEl.classList.remove('hidden');
+            transcript.textContent = 'Waiting for speech...';
+
             log('Testing speech recognition...');
 
             if (!hasSpeechRecognition) {
+                isSpeechTesting = false;
+                if (testBtn) testBtn.disabled = false;
                 showSpeechError('SPE_API', 'Speech Recognition not supported', 'Use Chrome, Safari, or Edge browser', false);
                 return;
             }
 
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            recognition = new SpeechRecognition();
-            recognition.continuous = false;
-            recognition.interimResults = true;
-            recognition.lang = 'en-US';
-            recognition.maxAlternatives = 1;
+            // Lazy-load the recognition object
+            if (!speechRecognition) {
+                speechRecognition = initSpeechRecognition();
+                if (!speechRecognition) {
+                    isSpeechTesting = false;
+                    if (testBtn) testBtn.disabled = false;
+                    showSpeechError('SPE_API', 'Speech Recognition not available', 'Update your browser', false);
+                    return;
+                }
+            }
 
-            let hasResult = false;
-            let timeout = null;
+            // Set up timeout (8 seconds max)
+            speechTimeout = setTimeout(() => {
+                log('Speech recognition timeout', 'warn');
+                if (speechRecognition && isSpeechTesting) {
+                    try {
+                        speechRecognition.stop();
+                    } catch (e) {}
+                }
+            }, 8000);
 
-            recognition.onstart = () => {
+            // Set up event handlers (using property assignment to avoid stacking)
+            speechRecognition.onstart = () => {
                 log('Speech recognition started', 'info');
-                timeout = setTimeout(() => {
-                    if (!hasResult) {
-                        log('Speech timeout - no speech detected', 'warn');
-                        recognition.stop();
-                    }
-                }, 10000);
             };
 
-            recognition.onresult = (event) => {
-                hasResult = true;
+            speechRecognition.onresult = (event) => {
+                speechHasResult = true;
                 let finalTranscript = '';
                 let interimTranscript = '';
 
@@ -1434,35 +1530,54 @@
                 }
             };
 
-            recognition.onend = () => {
-                clearTimeout(timeout);
-                log('Speech recognition ended', 'info');
-
-                if (hasResult) {
-                    permissionResults.speech.status = 'granted';
-                    localStorage.setItem('fvp_speech_granted', 'true');
-
-                    loadingEl.classList.add('hidden');
-                    successEl.classList.remove('hidden');
-                    log('Speech recognition test passed!', 'success');
-
-                    proceedToNext('speech');
-                } else {
-                    // No speech detected - show as warning, not error
-                    permissionResults.speech.status = 'granted'; // Still mark as working
-                    localStorage.setItem('fvp_speech_granted', 'true');
-
-                    loadingEl.classList.add('hidden');
-                    successEl.classList.remove('hidden');
-                    log('Speech recognition available (no speech detected)', 'warn');
-
-                    proceedToNext('speech');
+            speechRecognition.onend = () => {
+                if (speechTimeout) {
+                    clearTimeout(speechTimeout);
+                    speechTimeout = null;
                 }
+
+                if (!isSpeechTesting) {
+                    // Test was cancelled
+                    return;
+                }
+
+                log('Speech recognition ended', 'info');
+                isSpeechTesting = false;
+                if (testBtn) testBtn.disabled = false;
+
+                // Mark as success regardless of speech detected
+                permissionResults.speech.status = 'granted';
+                localStorage.setItem('fvp_speech_granted', 'true');
+
+                loadingEl.classList.add('hidden');
+                successEl.classList.remove('hidden');
+
+                if (speechHasResult) {
+                    log('Speech recognition test passed!', 'success');
+                } else {
+                    log('Speech recognition available (no speech detected)', 'warn');
+                }
+
+                proceedToNext('speech');
             };
 
-            recognition.onerror = (event) => {
-                clearTimeout(timeout);
+            speechRecognition.onerror = (event) => {
+                if (speechTimeout) {
+                    clearTimeout(speechTimeout);
+                    speechTimeout = null;
+                }
+
+                // Ignore aborted errors (user cancelled)
+                if (event.error === 'aborted') {
+                    log('Speech recognition aborted', 'info');
+                    isSpeechTesting = false;
+                    if (testBtn) testBtn.disabled = false;
+                    return;
+                }
+
                 log(`Speech recognition error: ${event.error}`, 'error');
+                isSpeechTesting = false;
+                if (testBtn) testBtn.disabled = false;
 
                 const errInfo = getErrorInfo({ error: event.error });
                 permissionResults.speech.status = 'denied';
@@ -1472,12 +1587,42 @@
                 showSpeechError(errInfo.code, errInfo.message, errInfo.fix, isServiceNotAllowed && isIOS);
             };
 
+            // Start recognition
             try {
-                recognition.start();
+                speechRecognition.start();
             } catch (err) {
-                log(`Failed to start speech recognition: ${err.message}`, 'error');
-                showSpeechError('SPE_START', 'Failed to start', 'Reload page and try again', false);
+                if (speechTimeout) {
+                    clearTimeout(speechTimeout);
+                    speechTimeout = null;
+                }
+                isSpeechTesting = false;
+                if (testBtn) testBtn.disabled = false;
+
+                if (err.name === 'InvalidStateError') {
+                    // Recognition already running - stop and retry
+                    log('Recognition already running, restarting...', 'warn');
+                    try {
+                        speechRecognition.stop();
+                    } catch (e) {}
+                    setTimeout(() => requestSpeechPermission(), 300);
+                } else {
+                    log(`Failed to start speech recognition: ${err.message}`, 'error');
+                    showSpeechError('SPE_START', 'Failed to start', 'Reload page and try again', false);
+                }
             }
+        }
+
+        function cancelSpeechTest() {
+            log('User cancelled speech test', 'info');
+            cleanupSpeechRecognition();
+
+            const preEl = document.getElementById('speech-pre');
+            const loadingEl = document.getElementById('speech-loading');
+            const testBtn = document.getElementById('speech-test-btn');
+
+            loadingEl.classList.add('hidden');
+            preEl.classList.remove('hidden');
+            if (testBtn) testBtn.disabled = false;
         }
 
         function showSpeechError(code, message, fix, showIOSHelp) {
