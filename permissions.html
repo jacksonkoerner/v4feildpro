@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>System Setup - Permissions</title>
+    <title>System Setup - FieldVoice Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
@@ -25,123 +25,509 @@
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
         .header-stripe { background: repeating-linear-gradient(-45deg, #f59e0b, #f59e0b 10px, #0a1628 10px, #0a1628 20px); height: 4px; }
-        .permission-card { transition: all 0.3s ease; }
-        .permission-card.success { border-color: #16a34a; background-color: rgba(22, 163, 74, 0.05); }
-        .permission-card.error { border-color: #dc2626; background-color: rgba(220, 38, 38, 0.05); }
-        .permission-card.warning { border-color: #ea580c; background-color: rgba(234, 88, 12, 0.05); }
-        .permission-card.testing { border-color: #1e3a5f; background-color: rgba(30, 58, 95, 0.05); }
-        @keyframes pulse-check { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
-        .pulse-check { animation: pulse-check 0.5s ease-in-out; }
-        .mic-level { transition: width 0.1s ease-out; }
-        @keyframes recording-pulse {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.5); }
-            50% { box-shadow: 0 0 0 8px rgba(234, 88, 12, 0); }
+
+        /* Sequential Flow Styles */
+        .flow-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            opacity: 0;
+            transform: translateX(30px);
+            pointer-events: none;
+            transition: opacity 0.4s ease, transform 0.4s ease;
         }
-        .recording-active { animation: recording-pulse 1.5s ease-out infinite; }
+        .flow-screen.active {
+            opacity: 1;
+            transform: translateX(0);
+            pointer-events: auto;
+        }
+        .flow-screen.exit-left {
+            opacity: 0;
+            transform: translateX(-30px);
+        }
+
+        /* Stepper Styles */
+        .step-indicator {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        .step-indicator.pending {
+            background: #334155;
+            color: #64748b;
+        }
+        .step-indicator.active {
+            background: #ea580c;
+            color: white;
+            box-shadow: 0 0 0 4px rgba(234, 88, 12, 0.2);
+        }
+        .step-indicator.completed {
+            background: #16a34a;
+            color: white;
+        }
+        .step-indicator.failed {
+            background: #dc2626;
+            color: white;
+        }
+        .step-indicator.skipped {
+            background: #64748b;
+            color: white;
+        }
+        .step-line {
+            height: 2px;
+            flex: 1;
+            background: #334155;
+            transition: background 0.3s ease;
+        }
+        .step-line.completed {
+            background: #16a34a;
+        }
+
+        /* Permission Icon Animation */
+        @keyframes icon-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .icon-pulse {
+            animation: icon-pulse 2s ease-in-out infinite;
+        }
+
+        /* Button animations */
+        @keyframes button-shimmer {
+            0% { background-position: -200% center; }
+            100% { background-position: 200% center; }
+        }
+        .btn-shimmer {
+            background: linear-gradient(90deg, #ea580c 0%, #f97316 25%, #ea580c 50%, #f97316 75%, #ea580c 100%);
+            background-size: 200% auto;
+            animation: button-shimmer 3s linear infinite;
+        }
+
+        /* Success check animation */
+        @keyframes check-bounce {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        .check-bounce {
+            animation: check-bounce 0.5s ease-out forwards;
+        }
+
+        /* Loading spinner */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .spin {
+            animation: spin 1s linear infinite;
+        }
+
+        /* Result card styles */
+        .result-card {
+            transition: all 0.3s ease;
+        }
+        .result-card.success {
+            border-color: #16a34a;
+            background: rgba(22, 163, 74, 0.05);
+        }
+        .result-card.failed {
+            border-color: #dc2626;
+            background: rgba(220, 38, 38, 0.05);
+        }
+        .result-card.skipped {
+            border-color: #64748b;
+            background: rgba(100, 116, 139, 0.05);
+        }
+
+        /* Mic level meter */
+        .mic-level { transition: width 0.1s ease-out; }
+
+        /* Debug console */
         .debug-log { font-family: 'SF Mono', Monaco, 'Courier New', monospace; font-size: 11px; }
     </style>
 </head>
-<body class="bg-slate-100 min-h-screen">
+<body class="bg-dot-navy min-h-screen overflow-hidden">
     <div class="header-stripe"></div>
 
-    <div class="max-w-lg mx-auto min-h-screen flex flex-col">
+    <div class="max-w-lg mx-auto min-h-screen flex flex-col relative">
 
-        <!-- HEADER -->
-        <header class="bg-dot-navy text-white p-6 text-center">
-            <div class="w-20 h-20 bg-dot-yellow flex items-center justify-center mx-auto mb-4">
-                <i class="fas fa-shield-alt text-dot-navy text-3xl"></i>
-            </div>
-            <h1 class="text-2xl font-bold">System Setup</h1>
-            <p class="text-sm text-slate-400 mt-1">Configure & test required permissions</p>
-        </header>
+        <!-- ==================== SCREEN 0: WELCOME ==================== -->
+        <div id="screen-welcome" class="flow-screen active flex flex-col min-h-screen">
+            <div class="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                <!-- Logo -->
+                <div class="w-24 h-24 bg-dot-yellow flex items-center justify-center mb-6">
+                    <i class="fas fa-hard-hat text-dot-navy text-4xl"></i>
+                </div>
 
-        <!-- MAIN CONTENT -->
-        <main class="flex-1 p-4 space-y-4">
+                <h1 class="text-3xl font-bold text-white mb-2">FieldVoice Pro</h1>
+                <p class="text-slate-400 mb-8">Voice-Powered Field Reporting</p>
 
-            <!-- Device Info Banner -->
-            <div id="deviceInfo" class="bg-slate-800 border border-slate-700 p-3">
-                <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Device Detection</p>
-                <p id="deviceInfoText" class="text-xs text-slate-300 font-mono">Detecting...</p>
-            </div>
-
-            <!-- ==================== MICROPHONE SECTION ==================== -->
-            <div id="micCard" class="permission-card bg-white border-2 border-slate-200">
-                <div class="p-4">
-                    <div class="flex items-start gap-4">
-                        <div class="w-14 h-14 bg-dot-navy flex items-center justify-center flex-shrink-0">
-                            <i id="micIcon" class="fas fa-microphone text-dot-yellow text-xl"></i>
-                        </div>
-                        <div class="flex-1">
-                            <h2 class="font-bold text-slate-800 uppercase text-sm">Microphone Access</h2>
-                            <p id="micStatus" class="text-sm text-slate-500 mt-1">Required for voice recording</p>
-                            <p id="micError" class="text-xs text-red-500 mt-1 hidden"></p>
-                        </div>
-                        <button id="micBtn" onclick="requestMicrophone()" class="px-4 py-2 bg-dot-navy hover:bg-dot-blue text-white font-bold text-xs uppercase transition-colors">
-                            Enable
-                        </button>
+                <!-- Features preview -->
+                <div class="w-full max-w-sm space-y-3 mb-10">
+                    <div class="flex items-center gap-3 text-left bg-dot-blue/30 p-3 rounded">
+                        <i class="fas fa-microphone text-dot-orange w-6 text-center"></i>
+                        <span class="text-sm text-slate-300">Voice recording for hands-free reports</span>
+                    </div>
+                    <div class="flex items-center gap-3 text-left bg-dot-blue/30 p-3 rounded">
+                        <i class="fas fa-camera text-dot-orange w-6 text-center"></i>
+                        <span class="text-sm text-slate-300">Photo documentation with GPS tags</span>
+                    </div>
+                    <div class="flex items-center gap-3 text-left bg-dot-blue/30 p-3 rounded">
+                        <i class="fas fa-location-dot text-dot-orange w-6 text-center"></i>
+                        <span class="text-sm text-slate-300">Automatic location & weather data</span>
+                    </div>
+                    <div class="flex items-center gap-3 text-left bg-dot-blue/30 p-3 rounded">
+                        <i class="fas fa-comment-dots text-dot-orange w-6 text-center"></i>
+                        <span class="text-sm text-slate-300">Real-time speech-to-text transcription</span>
                     </div>
                 </div>
+
+                <p class="text-xs text-slate-500 mb-6">We need a few permissions to enable these features</p>
+
+                <button onclick="startPermissionFlow()" class="btn-shimmer w-full max-w-sm py-4 text-white font-bold uppercase text-lg tracking-wide transition-all hover:scale-[1.02]">
+                    <i class="fas fa-rocket mr-2"></i>Get Started
+                </button>
+
+                <button onclick="skipToManual()" class="mt-4 text-slate-500 text-sm underline hover:text-slate-400">
+                    Skip to manual setup
+                </button>
             </div>
 
-            <!-- ==================== MIC TEST SECTION ==================== -->
-            <div id="micTestCard" class="permission-card bg-white border-2 border-slate-200 hidden">
-                <div class="p-4">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="w-10 h-10 bg-dot-orange flex items-center justify-center flex-shrink-0">
-                            <i class="fas fa-waveform text-white"></i>
-                        </div>
-                        <div class="flex-1">
-                            <h2 class="font-bold text-slate-800 uppercase text-sm">Microphone Test</h2>
-                            <p class="text-xs text-slate-500">Speak to verify audio input is working</p>
-                        </div>
+            <footer class="text-center py-4">
+                <p class="text-[10px] text-slate-600 uppercase tracking-widest">
+                    <i class="fas fa-shield-alt mr-1"></i>
+                    DOT Compliant Field Documentation
+                </p>
+            </footer>
+        </div>
+
+        <!-- ==================== SCREEN 1: MICROPHONE ==================== -->
+        <div id="screen-mic" class="flow-screen flex flex-col min-h-screen bg-slate-100">
+            <!-- Header with stepper -->
+            <header class="bg-dot-navy text-white p-4">
+                <div id="stepper-mic" class="flex items-center justify-center gap-2 mb-4"></div>
+                <p class="text-center text-slate-400 text-sm">Step 1 of 4</p>
+            </header>
+
+            <main class="flex-1 flex flex-col items-center justify-center p-6">
+                <!-- Pre-permission content -->
+                <div id="mic-pre" class="text-center">
+                    <div class="w-28 h-28 bg-dot-navy rounded-full flex items-center justify-center mx-auto mb-6 icon-pulse">
+                        <i class="fas fa-microphone text-dot-yellow text-5xl"></i>
                     </div>
 
-                    <!-- Level Meter -->
-                    <div class="bg-slate-100 border border-slate-200 p-3 mb-3">
-                        <p class="text-[10px] text-slate-400 uppercase mb-2">Audio Level</p>
-                        <div class="h-4 bg-slate-200 overflow-hidden">
-                            <div id="micLevel" class="mic-level h-full bg-safety-green" style="width: 0%"></div>
-                        </div>
-                        <p id="micLevelText" class="text-xs text-slate-500 mt-1">Waiting for audio...</p>
+                    <h2 class="text-2xl font-bold text-slate-800 mb-2">Microphone Access</h2>
+                    <p class="text-slate-600 mb-6 max-w-xs mx-auto">
+                        Required for voice recording. Speak your field reports instead of typing.
+                    </p>
+
+                    <div class="bg-dot-navy/5 border border-slate-200 p-4 rounded mb-8 max-w-xs mx-auto">
+                        <p class="text-xs text-slate-500 uppercase font-bold mb-2">Why we need this</p>
+                        <ul class="text-sm text-slate-600 space-y-1 text-left">
+                            <li><i class="fas fa-check text-safety-green mr-2"></i>Hands-free voice reporting</li>
+                            <li><i class="fas fa-check text-safety-green mr-2"></i>Audio notes on inspections</li>
+                            <li><i class="fas fa-check text-safety-green mr-2"></i>Voice-to-text transcription</li>
+                        </ul>
                     </div>
 
-                    <div class="flex gap-2">
-                        <button id="micTestBtn" onclick="startMicTest()" class="flex-1 px-4 py-3 bg-dot-orange hover:bg-orange-700 text-white font-bold text-xs uppercase transition-colors">
-                            <i class="fas fa-microphone mr-2"></i>Start Test
-                        </button>
-                        <button id="micTestStopBtn" onclick="stopMicTest()" class="hidden flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase transition-colors recording-active">
-                            <i class="fas fa-stop mr-2"></i>Stop Test
-                        </button>
-                    </div>
-                    <p id="micTestResult" class="text-xs text-center mt-2 hidden"></p>
+                    <button onclick="requestMicPermission()" class="w-full max-w-xs py-4 bg-dot-navy hover:bg-dot-blue text-white font-bold uppercase transition-all">
+                        <i class="fas fa-microphone mr-2"></i>Enable Microphone
+                    </button>
+
+                    <button onclick="skipPermission('mic')" class="mt-3 text-slate-500 text-sm underline hover:text-slate-600">
+                        Skip for now
+                    </button>
                 </div>
-            </div>
 
-            <!-- ==================== SPEECH RECOGNITION SECTION ==================== -->
-            <div id="speechCard" class="permission-card bg-white border-2 border-slate-200">
-                <div class="p-4">
-                    <div class="flex items-start gap-4">
-                        <div class="w-14 h-14 bg-violet-600 flex items-center justify-center flex-shrink-0">
-                            <i id="speechIcon" class="fas fa-comment-dots text-white text-xl"></i>
-                        </div>
-                        <div class="flex-1">
-                            <h2 class="font-bold text-slate-800 uppercase text-sm">Speech Recognition</h2>
-                            <p id="speechStatus" class="text-sm text-slate-500 mt-1">Required for voice-to-text</p>
-                            <p id="speechError" class="text-xs text-red-500 mt-1 hidden"></p>
-                        </div>
-                        <button id="speechBtn" onclick="testSpeechRecognition()" class="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs uppercase transition-colors">
-                            Test
-                        </button>
+                <!-- Loading state -->
+                <div id="mic-loading" class="text-center hidden">
+                    <div class="w-28 h-28 bg-dot-blue rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-spinner text-white text-4xl spin"></i>
+                    </div>
+                    <p class="text-slate-600">Waiting for permission...</p>
+                    <p class="text-xs text-slate-400 mt-2">Tap "Allow" in the browser dialog</p>
+                </div>
+
+                <!-- Success state -->
+                <div id="mic-success" class="text-center hidden">
+                    <div class="w-28 h-28 bg-safety-green rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-check text-white text-5xl check-bounce"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-safety-green mb-2">Microphone Enabled!</h2>
+                    <p class="text-slate-600 mb-6">You can now record voice reports</p>
+                    <p class="text-xs text-slate-400">Moving to next step...</p>
+                </div>
+
+                <!-- Error state -->
+                <div id="mic-error" class="text-center hidden">
+                    <div class="w-28 h-28 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-microphone-slash text-white text-5xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-red-600 mb-2">Permission Denied</h2>
+                    <p id="mic-error-message" class="text-slate-600 mb-4 max-w-xs mx-auto"></p>
+
+                    <div id="mic-error-help" class="bg-red-50 border border-red-200 p-4 rounded mb-6 max-w-xs mx-auto text-left">
+                        <p class="text-xs text-red-700 uppercase font-bold mb-2">How to fix</p>
+                        <p id="mic-error-fix" class="text-sm text-red-600"></p>
                     </div>
 
-                    <!-- Speech Test Area -->
-                    <div id="speechTestArea" class="hidden mt-4 p-3 bg-violet-50 border border-violet-200">
-                        <p class="text-xs text-violet-600 uppercase font-bold mb-2">Say something...</p>
-                        <p id="speechTranscript" class="text-sm text-slate-700 italic min-h-[40px]">Listening...</p>
+                    <button onclick="requestMicPermission()" class="w-full max-w-xs py-3 bg-red-600 hover:bg-red-700 text-white font-bold uppercase transition-all mb-3">
+                        <i class="fas fa-redo mr-2"></i>Try Again
+                    </button>
+
+                    <button onclick="skipPermission('mic')" class="text-slate-500 text-sm underline hover:text-slate-600">
+                        Continue without microphone
+                    </button>
+                </div>
+            </main>
+        </div>
+
+        <!-- ==================== SCREEN 2: CAMERA ==================== -->
+        <div id="screen-cam" class="flow-screen flex flex-col min-h-screen bg-slate-100">
+            <header class="bg-dot-navy text-white p-4">
+                <div id="stepper-cam" class="flex items-center justify-center gap-2 mb-4"></div>
+                <p class="text-center text-slate-400 text-sm">Step 2 of 4</p>
+            </header>
+
+            <main class="flex-1 flex flex-col items-center justify-center p-6">
+                <!-- Pre-permission content -->
+                <div id="cam-pre" class="text-center">
+                    <div class="w-28 h-28 bg-dot-orange rounded-full flex items-center justify-center mx-auto mb-6 icon-pulse">
+                        <i class="fas fa-camera text-white text-5xl"></i>
                     </div>
 
-                    <!-- iOS Help Panel -->
-                    <div id="iosHelpPanel" class="hidden mt-4 bg-red-50 border-2 border-red-200">
+                    <h2 class="text-2xl font-bold text-slate-800 mb-2">Camera Access</h2>
+                    <p class="text-slate-600 mb-6 max-w-xs mx-auto">
+                        Required for progress photos and visual documentation.
+                    </p>
+
+                    <div class="bg-dot-orange/5 border border-orange-200 p-4 rounded mb-8 max-w-xs mx-auto">
+                        <p class="text-xs text-slate-500 uppercase font-bold mb-2">Why we need this</p>
+                        <ul class="text-sm text-slate-600 space-y-1 text-left">
+                            <li><i class="fas fa-check text-safety-green mr-2"></i>Progress photo documentation</li>
+                            <li><i class="fas fa-check text-safety-green mr-2"></i>Before/after comparisons</li>
+                            <li><i class="fas fa-check text-safety-green mr-2"></i>GPS-tagged site images</li>
+                        </ul>
+                    </div>
+
+                    <button onclick="requestCamPermission()" class="w-full max-w-xs py-4 bg-dot-orange hover:bg-orange-700 text-white font-bold uppercase transition-all">
+                        <i class="fas fa-camera mr-2"></i>Enable Camera
+                    </button>
+
+                    <button onclick="skipPermission('cam')" class="mt-3 text-slate-500 text-sm underline hover:text-slate-600">
+                        Skip for now
+                    </button>
+                </div>
+
+                <!-- Loading state -->
+                <div id="cam-loading" class="text-center hidden">
+                    <div class="w-28 h-28 bg-dot-orange rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-spinner text-white text-4xl spin"></i>
+                    </div>
+                    <p class="text-slate-600">Waiting for permission...</p>
+                    <p class="text-xs text-slate-400 mt-2">Tap "Allow" in the browser dialog</p>
+                </div>
+
+                <!-- Success state -->
+                <div id="cam-success" class="text-center hidden">
+                    <div class="w-28 h-28 bg-safety-green rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-check text-white text-5xl check-bounce"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-safety-green mb-2">Camera Enabled!</h2>
+                    <p class="text-slate-600 mb-6">You can now capture progress photos</p>
+                    <p class="text-xs text-slate-400">Moving to next step...</p>
+                </div>
+
+                <!-- Error state -->
+                <div id="cam-error" class="text-center hidden">
+                    <div class="w-28 h-28 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-camera-slash text-white text-5xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-red-600 mb-2">Permission Denied</h2>
+                    <p id="cam-error-message" class="text-slate-600 mb-4 max-w-xs mx-auto"></p>
+
+                    <div id="cam-error-help" class="bg-red-50 border border-red-200 p-4 rounded mb-6 max-w-xs mx-auto text-left">
+                        <p class="text-xs text-red-700 uppercase font-bold mb-2">How to fix</p>
+                        <p id="cam-error-fix" class="text-sm text-red-600"></p>
+                    </div>
+
+                    <button onclick="requestCamPermission()" class="w-full max-w-xs py-3 bg-red-600 hover:bg-red-700 text-white font-bold uppercase transition-all mb-3">
+                        <i class="fas fa-redo mr-2"></i>Try Again
+                    </button>
+
+                    <button onclick="skipPermission('cam')" class="text-slate-500 text-sm underline hover:text-slate-600">
+                        Continue without camera
+                    </button>
+                </div>
+            </main>
+        </div>
+
+        <!-- ==================== SCREEN 3: LOCATION ==================== -->
+        <div id="screen-loc" class="flow-screen flex flex-col min-h-screen bg-slate-100">
+            <header class="bg-dot-navy text-white p-4">
+                <div id="stepper-loc" class="flex items-center justify-center gap-2 mb-4"></div>
+                <p class="text-center text-slate-400 text-sm">Step 3 of 4</p>
+            </header>
+
+            <main class="flex-1 flex flex-col items-center justify-center p-6">
+                <!-- Pre-permission content -->
+                <div id="loc-pre" class="text-center">
+                    <div class="w-28 h-28 bg-safety-green rounded-full flex items-center justify-center mx-auto mb-6 icon-pulse">
+                        <i class="fas fa-location-dot text-white text-5xl"></i>
+                    </div>
+
+                    <h2 class="text-2xl font-bold text-slate-800 mb-2">Location Access</h2>
+                    <p class="text-slate-600 mb-6 max-w-xs mx-auto">
+                        Required for GPS-tagged reports and local weather data.
+                    </p>
+
+                    <div class="bg-safety-green/5 border border-green-200 p-4 rounded mb-8 max-w-xs mx-auto">
+                        <p class="text-xs text-slate-500 uppercase font-bold mb-2">Why we need this</p>
+                        <ul class="text-sm text-slate-600 space-y-1 text-left">
+                            <li><i class="fas fa-check text-safety-green mr-2"></i>GPS coordinates on reports</li>
+                            <li><i class="fas fa-check text-safety-green mr-2"></i>Local weather conditions</li>
+                            <li><i class="fas fa-check text-safety-green mr-2"></i>Photo geotagging</li>
+                        </ul>
+                    </div>
+
+                    <button onclick="requestLocPermission()" class="w-full max-w-xs py-4 bg-safety-green hover:bg-green-700 text-white font-bold uppercase transition-all">
+                        <i class="fas fa-location-dot mr-2"></i>Enable Location
+                    </button>
+
+                    <button onclick="skipPermission('loc')" class="mt-3 text-slate-500 text-sm underline hover:text-slate-600">
+                        Skip for now
+                    </button>
+                </div>
+
+                <!-- Loading state -->
+                <div id="loc-loading" class="text-center hidden">
+                    <div class="w-28 h-28 bg-safety-green rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-spinner text-white text-4xl spin"></i>
+                    </div>
+                    <p class="text-slate-600">Getting your location...</p>
+                    <p class="text-xs text-slate-400 mt-2">Tap "Allow" in the browser dialog</p>
+                </div>
+
+                <!-- Success state -->
+                <div id="loc-success" class="text-center hidden">
+                    <div class="w-28 h-28 bg-safety-green rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-check text-white text-5xl check-bounce"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-safety-green mb-2">Location Enabled!</h2>
+                    <p id="loc-success-coords" class="text-slate-600 mb-6">GPS coordinates available</p>
+                    <p class="text-xs text-slate-400">Moving to next step...</p>
+                </div>
+
+                <!-- Error state -->
+                <div id="loc-error" class="text-center hidden">
+                    <div class="w-28 h-28 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-location-crosshairs text-white text-5xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-red-600 mb-2">Permission Denied</h2>
+                    <p id="loc-error-message" class="text-slate-600 mb-4 max-w-xs mx-auto"></p>
+
+                    <div id="loc-error-help" class="bg-red-50 border border-red-200 p-4 rounded mb-6 max-w-xs mx-auto text-left">
+                        <p class="text-xs text-red-700 uppercase font-bold mb-2">How to fix</p>
+                        <p id="loc-error-fix" class="text-sm text-red-600"></p>
+                    </div>
+
+                    <button onclick="requestLocPermission()" class="w-full max-w-xs py-3 bg-red-600 hover:bg-red-700 text-white font-bold uppercase transition-all mb-3">
+                        <i class="fas fa-redo mr-2"></i>Try Again
+                    </button>
+
+                    <button onclick="skipPermission('loc')" class="text-slate-500 text-sm underline hover:text-slate-600">
+                        Continue without location
+                    </button>
+                </div>
+            </main>
+        </div>
+
+        <!-- ==================== SCREEN 4: SPEECH RECOGNITION ==================== -->
+        <div id="screen-speech" class="flow-screen flex flex-col min-h-screen bg-slate-100">
+            <header class="bg-dot-navy text-white p-4">
+                <div id="stepper-speech" class="flex items-center justify-center gap-2 mb-4"></div>
+                <p class="text-center text-slate-400 text-sm">Step 4 of 4</p>
+            </header>
+
+            <main class="flex-1 flex flex-col items-center justify-center p-6 overflow-y-auto">
+                <!-- Pre-permission content -->
+                <div id="speech-pre" class="text-center">
+                    <div class="w-28 h-28 bg-violet-600 rounded-full flex items-center justify-center mx-auto mb-6 icon-pulse">
+                        <i class="fas fa-comment-dots text-white text-5xl"></i>
+                    </div>
+
+                    <h2 class="text-2xl font-bold text-slate-800 mb-2">Speech Recognition</h2>
+                    <p class="text-slate-600 mb-6 max-w-xs mx-auto">
+                        Converts your voice to text in real-time for faster reporting.
+                    </p>
+
+                    <div class="bg-violet-50 border border-violet-200 p-4 rounded mb-8 max-w-xs mx-auto">
+                        <p class="text-xs text-slate-500 uppercase font-bold mb-2">Why we need this</p>
+                        <ul class="text-sm text-slate-600 space-y-1 text-left">
+                            <li><i class="fas fa-check text-safety-green mr-2"></i>Real-time voice transcription</li>
+                            <li><i class="fas fa-check text-safety-green mr-2"></i>Hands-free text entry</li>
+                            <li><i class="fas fa-check text-safety-green mr-2"></i>Quick field note dictation</li>
+                        </ul>
+                    </div>
+
+                    <!-- iOS Warning -->
+                    <div id="ios-speech-warning" class="hidden bg-yellow-50 border border-yellow-300 p-4 rounded mb-6 max-w-xs mx-auto text-left">
+                        <p class="text-xs text-yellow-700 font-bold uppercase mb-2">
+                            <i class="fab fa-apple mr-1"></i>iOS Safari Note
+                        </p>
+                        <p class="text-xs text-yellow-600">
+                            Speech recognition on iOS requires <strong>Siri & Dictation</strong> to be enabled in your device settings.
+                        </p>
+                    </div>
+
+                    <button onclick="requestSpeechPermission()" class="w-full max-w-xs py-4 bg-violet-600 hover:bg-violet-700 text-white font-bold uppercase transition-all">
+                        <i class="fas fa-comment-dots mr-2"></i>Test Speech Recognition
+                    </button>
+
+                    <button onclick="skipPermission('speech')" class="mt-3 text-slate-500 text-sm underline hover:text-slate-600">
+                        Skip for now
+                    </button>
+                </div>
+
+                <!-- Loading/Testing state -->
+                <div id="speech-loading" class="text-center hidden">
+                    <div class="w-28 h-28 bg-violet-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-ear-listen text-white text-4xl"></i>
+                    </div>
+                    <p class="text-slate-800 font-bold mb-2">Listening...</p>
+                    <p class="text-slate-600 mb-4">Say something to test speech recognition</p>
+                    <div class="bg-violet-50 border border-violet-200 p-4 rounded max-w-xs mx-auto">
+                        <p id="speech-transcript" class="text-sm text-slate-700 italic min-h-[40px]">Waiting for speech...</p>
+                    </div>
+                </div>
+
+                <!-- Success state -->
+                <div id="speech-success" class="text-center hidden">
+                    <div class="w-28 h-28 bg-safety-green rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-check text-white text-5xl check-bounce"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-safety-green mb-2">Speech Recognition Works!</h2>
+                    <p class="text-slate-600 mb-6">Voice-to-text is ready</p>
+                    <p class="text-xs text-slate-400">Moving to summary...</p>
+                </div>
+
+                <!-- Error state with iOS help -->
+                <div id="speech-error" class="text-center hidden">
+                    <div class="w-28 h-28 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-comment-slash text-white text-5xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-red-600 mb-2">Speech Recognition Failed</h2>
+                    <p id="speech-error-message" class="text-slate-600 mb-4 max-w-xs mx-auto"></p>
+
+                    <!-- iOS-specific help panel -->
+                    <div id="ios-help-panel" class="hidden bg-red-50 border-2 border-red-200 rounded max-w-sm mx-auto mb-6 text-left">
                         <div class="p-3 bg-red-100 border-b border-red-200">
                             <p class="text-sm font-bold text-red-700 uppercase flex items-center gap-2">
                                 <i class="fab fa-apple"></i> iOS Safari - Siri & Dictation Required
@@ -153,219 +539,326 @@
                             </p>
 
                             <div class="space-y-3">
-                                <div class="bg-white p-3 border border-red-200">
+                                <div class="bg-white p-3 border border-red-200 rounded">
                                     <p class="text-xs font-bold text-slate-700 uppercase mb-2">Step 1: Enable Siri</p>
                                     <ol class="text-xs text-slate-600 space-y-1 list-decimal list-inside">
                                         <li>Open <strong>Settings</strong> app</li>
-                                        <li>Tap <strong>Siri & Search</strong> (or <strong>Siri</strong>)</li>
+                                        <li>Tap <strong>Siri & Search</strong></li>
                                         <li>Enable <strong>"Listen for 'Hey Siri'"</strong> OR <strong>"Press Side Button for Siri"</strong></li>
-                                        <li>Follow setup prompts if asked</li>
                                     </ol>
                                 </div>
 
-                                <div class="bg-white p-3 border border-red-200">
+                                <div class="bg-white p-3 border border-red-200 rounded">
                                     <p class="text-xs font-bold text-slate-700 uppercase mb-2">Step 2: Enable Dictation</p>
                                     <ol class="text-xs text-slate-600 space-y-1 list-decimal list-inside">
-                                        <li>Open <strong>Settings</strong> app</li>
-                                        <li>Tap <strong>General</strong></li>
+                                        <li>Open <strong>Settings</strong> > <strong>General</strong></li>
                                         <li>Tap <strong>Keyboard</strong></li>
-                                        <li>Scroll down and enable <strong>"Enable Dictation"</strong></li>
-                                        <li>Confirm when prompted</li>
+                                        <li>Enable <strong>"Enable Dictation"</strong></li>
                                     </ol>
                                 </div>
 
-                                <div class="bg-white p-3 border border-red-200">
+                                <div class="bg-white p-3 border border-red-200 rounded">
                                     <p class="text-xs font-bold text-slate-700 uppercase mb-2">Step 3: Reload & Test</p>
                                     <ol class="text-xs text-slate-600 space-y-1 list-decimal list-inside">
-                                        <li>Close Safari completely (swipe up from app switcher)</li>
-                                        <li>Reopen Safari and navigate back to this page</li>
-                                        <li>Tap "Test" on Speech Recognition again</li>
+                                        <li>Close Safari completely</li>
+                                        <li>Reopen and navigate back here</li>
+                                        <li>Tap "Try Again"</li>
                                     </ol>
                                 </div>
                             </div>
-
-                            <div class="bg-yellow-50 border border-yellow-300 p-3">
-                                <p class="text-xs text-yellow-700">
-                                    <i class="fas fa-lightbulb mr-1"></i>
-                                    <strong>Still not working?</strong> Check Settings > Privacy & Security > Speech Recognition and ensure it's enabled for Safari.
-                                </p>
-                            </div>
-
-                            <button onclick="testSpeechRecognition()" class="w-full px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase transition-colors">
-                                <i class="fas fa-redo mr-2"></i>Try Speech Recognition Again
-                            </button>
-
-                            <!-- Alternative: Groq Whisper -->
-                            <div class="mt-4 pt-4 border-t-2 border-red-200">
-                                <div class="bg-safety-green/10 border-2 border-safety-green p-3">
-                                    <p class="text-xs font-bold text-safety-green uppercase flex items-center gap-2 mb-2">
-                                        <i class="fas fa-magic"></i> Alternative: AI Transcription
-                                    </p>
-                                    <p class="text-xs text-slate-600 mb-3">
-                                        Skip the Siri/Dictation hassle! Use <strong>Groq Whisper AI</strong> for speech-to-text instead.
-                                        It's free, fast, and works reliably on any device.
-                                    </p>
-                                    <div class="space-y-2">
-                                        <p class="text-xs text-slate-500">
-                                            <strong>1.</strong> Get a free API key at <a href="https://console.groq.com" target="_blank" class="text-dot-blue underline font-bold">console.groq.com</a>
-                                        </p>
-                                        <p class="text-xs text-slate-500">
-                                            <strong>2.</strong> Enter the key on the Review page
-                                        </p>
-                                        <p class="text-xs text-slate-500">
-                                            <strong>3.</strong> Voice recording will automatically use AI transcription
-                                        </p>
-                                    </div>
-                                    <a href="#apiKeyCard" onclick="document.getElementById('apiKeyCard').scrollIntoView({behavior:'smooth'}); document.getElementById('apiKeyInput').focus();" class="mt-3 w-full block text-center px-4 py-3 bg-safety-green hover:bg-green-700 text-white font-bold text-xs uppercase transition-colors cursor-pointer">
-                                        <i class="fas fa-key mr-2"></i>Set Up API Key Below
-                                    </a>
-                                </div>
-                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <!-- ==================== LOCATION SECTION ==================== -->
-            <div id="locCard" class="permission-card bg-white border-2 border-slate-200">
-                <div class="p-4">
-                    <div class="flex items-start gap-4">
-                        <div class="w-14 h-14 bg-safety-green flex items-center justify-center flex-shrink-0">
-                            <i id="locIcon" class="fas fa-location-dot text-white text-xl"></i>
-                        </div>
-                        <div class="flex-1">
-                            <h2 class="font-bold text-slate-800 uppercase text-sm">Location Access</h2>
-                            <p id="locStatus" class="text-sm text-slate-500 mt-1">Required for weather & GPS photos</p>
-                            <p id="locError" class="text-xs text-red-500 mt-1 hidden"></p>
-                        </div>
-                        <button id="locBtn" onclick="requestLocation()" class="px-4 py-2 bg-safety-green hover:bg-green-700 text-white font-bold text-xs uppercase transition-colors">
-                            Enable
+                    <!-- Generic error help -->
+                    <div id="speech-error-help" class="bg-red-50 border border-red-200 p-4 rounded mb-6 max-w-xs mx-auto text-left">
+                        <p class="text-xs text-red-700 uppercase font-bold mb-2">How to fix</p>
+                        <p id="speech-error-fix" class="text-sm text-red-600"></p>
+                    </div>
+
+                    <button onclick="requestSpeechPermission()" class="w-full max-w-xs py-3 bg-red-600 hover:bg-red-700 text-white font-bold uppercase transition-all mb-3">
+                        <i class="fas fa-redo mr-2"></i>Try Again
+                    </button>
+
+                    <!-- Groq Whisper Alternative -->
+                    <div id="groq-alternative" class="hidden mt-6 bg-safety-green/10 border-2 border-safety-green p-4 rounded max-w-sm mx-auto text-left">
+                        <p class="text-xs font-bold text-safety-green uppercase flex items-center gap-2 mb-2">
+                            <i class="fas fa-magic"></i> Alternative: AI Transcription
+                        </p>
+                        <p class="text-xs text-slate-600 mb-3">
+                            Skip the Siri/Dictation hassle! Use <strong>Groq Whisper AI</strong> for speech-to-text instead. It's free and works on any device.
+                        </p>
+                        <button onclick="showApiKeySetup()" class="w-full py-2 bg-safety-green hover:bg-green-700 text-white font-bold text-xs uppercase transition-colors">
+                            <i class="fas fa-key mr-2"></i>Set Up Groq API Key
                         </button>
                     </div>
-                </div>
-            </div>
 
-            <!-- ==================== CAMERA SECTION ==================== -->
-            <div id="camCard" class="permission-card bg-white border-2 border-slate-200">
-                <div class="p-4">
-                    <div class="flex items-start gap-4">
-                        <div class="w-14 h-14 bg-dot-orange flex items-center justify-center flex-shrink-0">
-                            <i id="camIcon" class="fas fa-camera text-white text-xl"></i>
+                    <button onclick="skipPermission('speech')" class="mt-4 text-slate-500 text-sm underline hover:text-slate-600">
+                        Continue without speech recognition
+                    </button>
+                </div>
+            </main>
+        </div>
+
+        <!-- ==================== SCREEN 5: SUMMARY ==================== -->
+        <div id="screen-summary" class="flow-screen flex flex-col min-h-screen bg-slate-100">
+            <header class="bg-dot-navy text-white p-6 text-center">
+                <div class="w-16 h-16 bg-dot-yellow flex items-center justify-center mx-auto mb-4 rounded-full">
+                    <i id="summary-header-icon" class="fas fa-clipboard-check text-dot-navy text-2xl"></i>
+                </div>
+                <h1 id="summary-title" class="text-2xl font-bold">Setup Complete!</h1>
+                <p id="summary-subtitle" class="text-sm text-slate-400 mt-1">Here's what's enabled</p>
+            </header>
+
+            <main class="flex-1 p-4 space-y-3 overflow-y-auto">
+                <!-- Result cards -->
+                <div id="result-mic" class="result-card bg-white border-2 border-slate-200 p-4 flex items-center gap-4">
+                    <div id="result-mic-icon" class="w-12 h-12 bg-slate-200 flex items-center justify-center rounded-full flex-shrink-0">
+                        <i class="fas fa-microphone text-slate-400 text-lg"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="font-bold text-slate-800 text-sm uppercase">Microphone</p>
+                        <p id="result-mic-status" class="text-xs text-slate-500">Not configured</p>
+                    </div>
+                    <i id="result-mic-badge" class="fas fa-circle text-slate-300"></i>
+                </div>
+
+                <div id="result-cam" class="result-card bg-white border-2 border-slate-200 p-4 flex items-center gap-4">
+                    <div id="result-cam-icon" class="w-12 h-12 bg-slate-200 flex items-center justify-center rounded-full flex-shrink-0">
+                        <i class="fas fa-camera text-slate-400 text-lg"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="font-bold text-slate-800 text-sm uppercase">Camera</p>
+                        <p id="result-cam-status" class="text-xs text-slate-500">Not configured</p>
+                    </div>
+                    <i id="result-cam-badge" class="fas fa-circle text-slate-300"></i>
+                </div>
+
+                <div id="result-loc" class="result-card bg-white border-2 border-slate-200 p-4 flex items-center gap-4">
+                    <div id="result-loc-icon" class="w-12 h-12 bg-slate-200 flex items-center justify-center rounded-full flex-shrink-0">
+                        <i class="fas fa-location-dot text-slate-400 text-lg"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="font-bold text-slate-800 text-sm uppercase">Location</p>
+                        <p id="result-loc-status" class="text-xs text-slate-500">Not configured</p>
+                    </div>
+                    <i id="result-loc-badge" class="fas fa-circle text-slate-300"></i>
+                </div>
+
+                <div id="result-speech" class="result-card bg-white border-2 border-slate-200 p-4 flex items-center gap-4">
+                    <div id="result-speech-icon" class="w-12 h-12 bg-slate-200 flex items-center justify-center rounded-full flex-shrink-0">
+                        <i class="fas fa-comment-dots text-slate-400 text-lg"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="font-bold text-slate-800 text-sm uppercase">Speech Recognition</p>
+                        <p id="result-speech-status" class="text-xs text-slate-500">Not configured</p>
+                    </div>
+                    <i id="result-speech-badge" class="fas fa-circle text-slate-300"></i>
+                </div>
+
+                <!-- API Key Section (collapsible) -->
+                <div id="api-key-section" class="bg-white border-2 border-slate-200">
+                    <button onclick="toggleApiKey()" class="w-full p-4 flex items-center gap-4 text-left">
+                        <div class="w-12 h-12 bg-dot-yellow flex items-center justify-center rounded-full flex-shrink-0">
+                            <i class="fas fa-key text-dot-navy text-lg"></i>
                         </div>
                         <div class="flex-1">
-                            <h2 class="font-bold text-slate-800 uppercase text-sm">Camera Access</h2>
-                            <p id="camStatus" class="text-sm text-slate-500 mt-1">Required for progress photos</p>
-                            <p id="camError" class="text-xs text-red-500 mt-1 hidden"></p>
+                            <p class="font-bold text-slate-800 text-sm uppercase">Groq API Key</p>
+                            <p id="api-key-preview" class="text-xs text-slate-500">Optional - for AI transcription</p>
                         </div>
-                        <button id="camBtn" onclick="requestCamera()" class="px-4 py-2 bg-dot-orange hover:bg-orange-700 text-white font-bold text-xs uppercase transition-colors">
-                            Enable
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ==================== GROQ API KEY SECTION ==================== -->
-            <div id="apiKeyCard" class="permission-card bg-white border-2 border-slate-200">
-                <div class="p-4">
-                    <div class="flex items-start gap-4">
-                        <div class="w-14 h-14 bg-dot-yellow flex items-center justify-center flex-shrink-0">
-                            <i id="apiKeyIcon" class="fas fa-key text-dot-navy text-xl"></i>
-                        </div>
-                        <div class="flex-1">
-                            <h2 class="font-bold text-slate-800 uppercase text-sm">Groq API Key</h2>
-                            <p id="apiKeyStatus" class="text-sm text-slate-500 mt-1">Required for voice transcription & AI</p>
-                        </div>
-                        <div id="apiKeyBadge" class="hidden px-3 py-1 bg-safety-green text-white text-xs font-bold uppercase">
-                            <i class="fas fa-check mr-1"></i>Saved
-                        </div>
-                    </div>
-
-                    <div class="mt-4 pt-4 border-t border-slate-200">
+                        <i id="api-key-toggle" class="fas fa-chevron-down text-slate-400"></i>
+                    </button>
+                    <div id="api-key-form" class="hidden border-t border-slate-200 p-4">
                         <p class="text-xs text-slate-600 mb-3">
                             Get a free API key at <a href="https://console.groq.com" target="_blank" class="underline text-dot-blue font-bold">console.groq.com</a>
                         </p>
                         <div class="flex gap-2">
-                            <input type="password" id="apiKeyInput" class="flex-1 bg-white border-2 border-slate-300 px-4 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-dot-blue" placeholder="gsk_...">
-                            <button onclick="saveApiKey()" class="px-4 py-2 bg-dot-orange hover:bg-orange-700 text-white font-bold uppercase text-sm transition-colors">
+                            <input type="password" id="apiKeyInput" class="flex-1 bg-white border-2 border-slate-300 px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-dot-blue rounded" placeholder="gsk_...">
+                            <button onclick="saveApiKey()" class="px-4 py-2 bg-dot-orange hover:bg-orange-700 text-white font-bold uppercase text-xs transition-colors rounded">
                                 Save
                             </button>
                         </div>
                         <p id="apiKeyMessage" class="text-xs mt-2 hidden"></p>
+                    </div>
+                </div>
 
-                        <div class="mt-3 bg-slate-50 border border-slate-200 p-3">
-                            <p class="text-xs text-slate-500">
-                                <i class="fas fa-info-circle text-dot-blue mr-1"></i>
-                                <strong>Used for:</strong> Voice-to-text on iPhone, AI report refinement
-                            </p>
-                            <p class="text-xs text-slate-400 mt-1">
-                                <i class="fas fa-dollar-sign mr-1"></i>
-                                Cost: ~$0.04/hour of audio (essentially free)
-                            </p>
+                <!-- Summary message -->
+                <div id="summary-message" class="bg-dot-navy/5 border border-slate-200 p-4 rounded">
+                    <p id="summary-message-text" class="text-sm text-slate-600 text-center"></p>
+                </div>
+            </main>
+
+            <div class="p-4 bg-white border-t border-slate-200">
+                <button onclick="finishSetup()" class="w-full py-4 bg-safety-green hover:bg-green-700 text-white font-bold uppercase transition-colors flex items-center justify-center gap-2">
+                    <span>Continue to Dashboard</span>
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+
+                <button onclick="retryFailed()" id="retry-failed-btn" class="hidden w-full mt-3 py-3 bg-dot-orange hover:bg-orange-700 text-white font-bold uppercase text-sm transition-colors flex items-center justify-center gap-2">
+                    <i class="fas fa-redo"></i>
+                    <span>Retry Failed Permissions</span>
+                </button>
+            </div>
+
+            <footer class="bg-dot-navy text-center py-3">
+                <p class="text-[10px] text-slate-500 uppercase tracking-widest">
+                    <i class="fas fa-shield-alt mr-1"></i>
+                    DOT Compliant Field Documentation System
+                </p>
+            </footer>
+        </div>
+
+        <!-- ==================== MANUAL SETUP SCREEN ==================== -->
+        <div id="screen-manual" class="flow-screen flex flex-col min-h-screen bg-slate-100">
+            <header class="bg-dot-navy text-white p-6 text-center">
+                <div class="w-16 h-16 bg-dot-yellow flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-cog text-dot-navy text-2xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold">Manual Setup</h1>
+                <p class="text-sm text-slate-400 mt-1">Configure permissions individually</p>
+            </header>
+
+            <main class="flex-1 p-4 space-y-3 overflow-y-auto">
+                <!-- Device Info -->
+                <div class="bg-slate-800 border border-slate-700 p-3 rounded">
+                    <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Device Detection</p>
+                    <p id="deviceInfoText" class="text-xs text-slate-300 font-mono">Detecting...</p>
+                </div>
+
+                <!-- Manual permission cards -->
+                <div id="manual-mic-card" class="bg-white border-2 border-slate-200 p-4">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-dot-navy flex items-center justify-center flex-shrink-0 rounded">
+                            <i id="manual-mic-icon" class="fas fa-microphone text-dot-yellow text-lg"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-bold text-slate-800 text-sm uppercase">Microphone</p>
+                            <p id="manual-mic-status" class="text-xs text-slate-500">Required for voice recording</p>
+                        </div>
+                        <button id="manual-mic-btn" onclick="manualRequestMic()" class="px-4 py-2 bg-dot-navy hover:bg-dot-blue text-white font-bold text-xs uppercase transition-colors rounded">
+                            Enable
+                        </button>
+                    </div>
+                </div>
+
+                <div id="manual-cam-card" class="bg-white border-2 border-slate-200 p-4">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-dot-orange flex items-center justify-center flex-shrink-0 rounded">
+                            <i id="manual-cam-icon" class="fas fa-camera text-white text-lg"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-bold text-slate-800 text-sm uppercase">Camera</p>
+                            <p id="manual-cam-status" class="text-xs text-slate-500">Required for progress photos</p>
+                        </div>
+                        <button id="manual-cam-btn" onclick="manualRequestCam()" class="px-4 py-2 bg-dot-orange hover:bg-orange-700 text-white font-bold text-xs uppercase transition-colors rounded">
+                            Enable
+                        </button>
+                    </div>
+                </div>
+
+                <div id="manual-loc-card" class="bg-white border-2 border-slate-200 p-4">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-safety-green flex items-center justify-center flex-shrink-0 rounded">
+                            <i id="manual-loc-icon" class="fas fa-location-dot text-white text-lg"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-bold text-slate-800 text-sm uppercase">Location</p>
+                            <p id="manual-loc-status" class="text-xs text-slate-500">Required for GPS & weather</p>
+                        </div>
+                        <button id="manual-loc-btn" onclick="manualRequestLoc()" class="px-4 py-2 bg-safety-green hover:bg-green-700 text-white font-bold text-xs uppercase transition-colors rounded">
+                            Enable
+                        </button>
+                    </div>
+                </div>
+
+                <div id="manual-speech-card" class="bg-white border-2 border-slate-200 p-4">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-violet-600 flex items-center justify-center flex-shrink-0 rounded">
+                            <i id="manual-speech-icon" class="fas fa-comment-dots text-white text-lg"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-bold text-slate-800 text-sm uppercase">Speech Recognition</p>
+                            <p id="manual-speech-status" class="text-xs text-slate-500">Required for voice-to-text</p>
+                        </div>
+                        <button id="manual-speech-btn" onclick="manualRequestSpeech()" class="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs uppercase transition-colors rounded">
+                            Test
+                        </button>
+                    </div>
+                </div>
+
+                <!-- API Key -->
+                <div class="bg-white border-2 border-slate-200 p-4">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="w-12 h-12 bg-dot-yellow flex items-center justify-center flex-shrink-0 rounded">
+                            <i class="fas fa-key text-dot-navy text-lg"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-bold text-slate-800 text-sm uppercase">Groq API Key</p>
+                            <p class="text-xs text-slate-500">For AI transcription (optional)</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="password" id="manualApiKeyInput" class="flex-1 bg-white border-2 border-slate-300 px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-dot-blue rounded" placeholder="gsk_...">
+                        <button onclick="saveManualApiKey()" class="px-4 py-2 bg-dot-orange hover:bg-orange-700 text-white font-bold uppercase text-xs transition-colors rounded">
+                            Save
+                        </button>
+                    </div>
+                    <p id="manualApiKeyMessage" class="text-xs mt-2 hidden"></p>
+                </div>
+
+                <!-- Summary -->
+                <div id="manual-summary" class="bg-white border-2 border-slate-200 p-4">
+                    <div class="flex items-center gap-3">
+                        <div id="manual-summary-icon" class="w-10 h-10 bg-slate-200 flex items-center justify-center rounded">
+                            <i class="fas fa-clock text-slate-400"></i>
+                        </div>
+                        <div>
+                            <p id="manual-summary-title" class="font-bold text-slate-800 text-sm uppercase">Setup Required</p>
+                            <p id="manual-summary-text" class="text-xs text-slate-500">Enable permissions above</p>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- ==================== STATUS SUMMARY ==================== -->
-            <div id="statusSummary" class="bg-white border-2 border-slate-200 p-4">
-                <div class="flex items-center gap-3">
-                    <div id="summaryIcon" class="w-10 h-10 bg-slate-200 flex items-center justify-center">
-                        <i class="fas fa-clock text-slate-400"></i>
-                    </div>
-                    <div>
-                        <p id="summaryTitle" class="font-bold text-slate-800 text-sm uppercase">Setup Required</p>
-                        <p id="summaryText" class="text-xs text-slate-500">Enable permissions above to continue</p>
+                <!-- Debug Console -->
+                <div class="bg-slate-900 border border-slate-700 rounded">
+                    <button onclick="toggleDebug()" class="w-full p-3 flex items-center justify-between text-left">
+                        <span class="text-xs text-slate-400 uppercase font-bold"><i class="fas fa-bug mr-2"></i>Debug Console</span>
+                        <i id="debugToggleIcon" class="fas fa-chevron-down text-slate-500 text-xs"></i>
+                    </button>
+                    <div id="debugConsole" class="hidden border-t border-slate-700">
+                        <div id="debugLog" class="debug-log p-3 max-h-48 overflow-y-auto text-slate-300 space-y-1">
+                            <p class="text-slate-500">// Debug log initialized</p>
+                        </div>
+                        <div class="border-t border-slate-700 p-2 flex gap-2">
+                            <button onclick="copyDebugLog()" class="flex-1 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold uppercase rounded">
+                                <i class="fas fa-copy mr-1"></i>Copy
+                            </button>
+                            <button onclick="clearDebugLog()" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold uppercase rounded">
+                                <i class="fas fa-trash mr-1"></i>Clear
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </main>
 
-            <!-- ==================== DEBUG CONSOLE ==================== -->
-            <div class="bg-slate-900 border border-slate-700">
-                <button onclick="toggleDebug()" class="w-full p-3 flex items-center justify-between text-left">
-                    <span class="text-xs text-slate-400 uppercase font-bold"><i class="fas fa-bug mr-2"></i>Debug Console</span>
-                    <i id="debugToggleIcon" class="fas fa-chevron-down text-slate-500 text-xs"></i>
+            <div class="p-4 bg-white border-t border-slate-200">
+                <button onclick="finishSetup()" class="w-full py-4 bg-safety-green hover:bg-green-700 text-white font-bold uppercase transition-colors flex items-center justify-center gap-2 rounded">
+                    <span>Continue to Dashboard</span>
+                    <i class="fas fa-arrow-right"></i>
                 </button>
-                <div id="debugConsole" class="hidden border-t border-slate-700">
-                    <div id="debugLog" class="debug-log p-3 max-h-48 overflow-y-auto text-slate-300 space-y-1">
-                        <p class="text-slate-500">// Debug log initialized</p>
-                    </div>
-                    <div class="border-t border-slate-700 p-2 flex gap-2">
-                        <button onclick="copyDebugLog()" class="flex-1 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold uppercase">
-                            <i class="fas fa-copy mr-1"></i>Copy Log
-                        </button>
-                        <button onclick="clearDebugLog()" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold uppercase">
-                            <i class="fas fa-trash mr-1"></i>Clear
-                        </button>
-                    </div>
-                </div>
             </div>
-
-        </main>
-
-        <!-- CONTINUE BUTTON -->
-        <div class="p-4 bg-white border-t border-slate-200">
-            <button id="continueBtn" onclick="finishSetup()" class="w-full p-4 bg-safety-green hover:bg-green-700 text-white font-bold uppercase transition-colors flex items-center justify-center gap-2">
-                <span id="continueBtnText">Continue to Dashboard</span>
-                <i class="fas fa-arrow-right"></i>
-            </button>
         </div>
-
-        <!-- FOOTER -->
-        <footer class="bg-dot-navy text-center py-3">
-            <p class="text-[10px] text-slate-500 uppercase tracking-widest">
-                <i class="fas fa-shield-alt mr-1"></i>
-                DOT Compliant Field Documentation System
-            </p>
-        </footer>
     </div>
 
     <script>
         // ============ STATE ============
-        let permissions = { mic: false, speech: false, loc: false, cam: false };
-        let micStream = null;
-        let audioContext = null;
-        let analyser = null;
-        let micTestInterval = null;
+        const permissionResults = {
+            mic: { status: 'pending', error: null },    // pending, granted, denied, skipped
+            cam: { status: 'pending', error: null },
+            loc: { status: 'pending', error: null },
+            speech: { status: 'pending', error: null }
+        };
+
+        let currentScreen = 'welcome';
         let recognition = null;
         let debugLogs = [];
 
@@ -379,24 +872,52 @@
         const isAndroid = /Android/i.test(navigator.userAgent);
         const isSecureContext = window.isSecureContext;
         const hasMediaDevices = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
-        const hasSpeechRecognition = !!( window.SpeechRecognition || window.webkitSpeechRecognition);
+        const hasSpeechRecognition = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+
+        // ============ ERROR CODE MAPPING ============
+        const errorCodes = {
+            'NotAllowedError': { code: 'ERR_001', message: 'Permission denied by user or system', fix: 'Tap the lock icon in address bar > Site Settings > Allow access' },
+            'NotFoundError': { code: 'ERR_002', message: 'No device found', fix: 'Connect a device or check system settings' },
+            'NotReadableError': { code: 'ERR_003', message: 'Device is in use by another app', fix: 'Close other apps using this device (Zoom, Teams, etc.)' },
+            'OverconstrainedError': { code: 'ERR_004', message: 'Device constraints cannot be satisfied', fix: 'Try a different device or restart browser' },
+            'AbortError': { code: 'ERR_005', message: 'Request was aborted', fix: 'Try again or restart browser' },
+            'SecurityError': { code: 'ERR_006', message: 'Security policy blocked access', fix: 'Ensure you are on HTTPS' },
+            'TypeError': { code: 'ERR_007', message: 'Invalid request or browser incompatible', fix: 'Update your browser to latest version' },
+            'no-speech': { code: 'SPE_001', message: 'No speech detected', fix: 'Speak louder or check microphone' },
+            'aborted': { code: 'SPE_002', message: 'Speech recognition aborted', fix: 'Try again' },
+            'audio-capture': { code: 'SPE_003', message: 'Audio capture failed', fix: 'Check microphone permissions' },
+            'network': { code: 'SPE_004', message: 'Network error', fix: 'Check internet connection' },
+            'not-allowed': { code: 'SPE_005', message: 'Speech recognition not allowed', fix: 'Enable microphone permission' },
+            'service-not-allowed': { code: 'SPE_006', message: 'Speech service blocked', fix: 'Enable Siri & Dictation in iOS Settings' },
+            'PERMISSION_DENIED': { code: 'GEO_001', message: 'Location permission denied', fix: 'Enable location in browser and device settings' },
+            'POSITION_UNAVAILABLE': { code: 'GEO_002', message: 'Location unavailable', fix: 'Move to area with better GPS signal' },
+            'TIMEOUT': { code: 'GEO_003', message: 'Location request timed out', fix: 'Try again in area with better signal' },
+        };
+
+        function getErrorInfo(error) {
+            const name = error.name || error.error || error.message || String(error);
+            const code = error.code;
+            if (code === 1) return errorCodes['PERMISSION_DENIED'];
+            if (code === 2) return errorCodes['POSITION_UNAVAILABLE'];
+            if (code === 3) return errorCodes['TIMEOUT'];
+            return errorCodes[name] || { code: 'ERR_UNK', message: name || 'Unknown error', fix: 'Try restarting browser or device' };
+        }
 
         // ============ DEBUG LOGGING ============
         function log(message, type = 'info') {
             const timestamp = new Date().toLocaleTimeString();
             const colors = { info: 'text-slate-300', success: 'text-green-400', error: 'text-red-400', warn: 'text-yellow-400' };
-            const icons = { info: 'ℹ️', success: '✅', error: '❌', warn: '⚠️' };
-
-            const logEntry = `[${timestamp}] ${icons[type]} ${message}`;
+            const icons = { info: 'i', success: '+', error: 'x', warn: '!' };
+            const logEntry = `[${timestamp}] [${icons[type]}] ${message}`;
             debugLogs.push(logEntry);
-
             const logEl = document.getElementById('debugLog');
-            const p = document.createElement('p');
-            p.className = colors[type];
-            p.textContent = logEntry;
-            logEl.appendChild(p);
-            logEl.scrollTop = logEl.scrollHeight;
-
+            if (logEl) {
+                const p = document.createElement('p');
+                p.className = colors[type];
+                p.textContent = logEntry;
+                logEl.appendChild(p);
+                logEl.scrollTop = logEl.scrollHeight;
+            }
             console.log(`[Permissions] ${message}`);
         }
 
@@ -408,272 +929,290 @@
         }
 
         function copyDebugLog() {
-            const text = debugLogs.join('\n');
-            navigator.clipboard.writeText(text).then(() => {
-                log('Debug log copied to clipboard', 'success');
-            }).catch(err => {
-                log('Failed to copy: ' + err.message, 'error');
-            });
+            navigator.clipboard.writeText(debugLogs.join('\n')).then(() => log('Debug log copied', 'success')).catch(err => log('Copy failed: ' + err.message, 'error'));
         }
 
         function clearDebugLog() {
             debugLogs = [];
-            document.getElementById('debugLog').innerHTML = '<p class="text-slate-500">// Debug log cleared</p>';
+            const logEl = document.getElementById('debugLog');
+            if (logEl) logEl.innerHTML = '<p class="text-slate-500">// Debug log cleared</p>';
         }
 
-        // ============ ERROR CODE MAPPING ============
-        const errorCodes = {
-            // MediaDevices errors
-            'NotAllowedError': { code: 'ERR_001', message: 'Permission denied by user or system', fix: 'Tap the lock icon in address bar > Site Settings > Allow microphone' },
-            'NotFoundError': { code: 'ERR_002', message: 'No microphone found on device', fix: 'Connect a microphone or check device settings' },
-            'NotReadableError': { code: 'ERR_003', message: 'Microphone is in use by another app', fix: 'Close other apps using the microphone (Zoom, Teams, etc.)' },
-            'OverconstrainedError': { code: 'ERR_004', message: 'Microphone constraints cannot be satisfied', fix: 'Try a different microphone or restart browser' },
-            'AbortError': { code: 'ERR_005', message: 'Request was aborted', fix: 'Try again or restart browser' },
-            'SecurityError': { code: 'ERR_006', message: 'Security policy blocked access', fix: 'Ensure you are on HTTPS or localhost' },
-            'TypeError': { code: 'ERR_007', message: 'Invalid request or browser incompatible', fix: 'Update your browser to latest version' },
+        // ============ SCREEN NAVIGATION ============
+        function showScreen(screenId) {
+            const screens = document.querySelectorAll('.flow-screen');
+            screens.forEach(screen => {
+                if (screen.id === `screen-${currentScreen}`) {
+                    screen.classList.add('exit-left');
+                    screen.classList.remove('active');
+                }
+            });
 
-            // Speech Recognition errors
-            'no-speech': { code: 'SPE_001', message: 'No speech detected', fix: 'Speak louder or check microphone' },
-            'aborted': { code: 'SPE_002', message: 'Speech recognition aborted', fix: 'Try again' },
-            'audio-capture': { code: 'SPE_003', message: 'Audio capture failed', fix: 'Check microphone permissions' },
-            'network': { code: 'SPE_004', message: 'Network error for speech service', fix: 'Check internet connection' },
-            'not-allowed': { code: 'SPE_005', message: 'Speech recognition not allowed', fix: 'Enable microphone permission and reload page' },
-            'service-not-allowed': { code: 'SPE_006', message: 'Speech service blocked by iOS', fix: 'Enable Siri & Dictation in iOS Settings (see instructions below)' },
-            'bad-grammar': { code: 'SPE_007', message: 'Speech grammar error', fix: 'Try again' },
-            'language-not-supported': { code: 'SPE_008', message: 'Language not supported', fix: 'Change device language to English' },
+            setTimeout(() => {
+                screens.forEach(screen => {
+                    screen.classList.remove('exit-left', 'active');
+                    if (screen.id === `screen-${screenId}`) {
+                        screen.classList.add('active');
+                    }
+                });
+                currentScreen = screenId;
 
-            // Geolocation errors
-            'PERMISSION_DENIED': { code: 'GEO_001', message: 'Location permission denied', fix: 'Enable location in browser and device settings' },
-            'POSITION_UNAVAILABLE': { code: 'GEO_002', message: 'Location unavailable', fix: 'Move to area with better GPS signal' },
-            'TIMEOUT': { code: 'GEO_003', message: 'Location request timed out', fix: 'Try again in area with better signal' },
-        };
-
-        function getErrorInfo(error, type = 'media') {
-            const name = error.name || error.error || error.message || String(error);
-            const code = error.code;
-
-            // Check for geolocation error codes
-            if (code === 1) return errorCodes['PERMISSION_DENIED'];
-            if (code === 2) return errorCodes['POSITION_UNAVAILABLE'];
-            if (code === 3) return errorCodes['TIMEOUT'];
-
-            return errorCodes[name] || {
-                code: 'ERR_UNK',
-                message: name || 'Unknown error',
-                fix: 'Try restarting browser or device'
-            };
+                // Update steppers when showing permission screens
+                if (['mic', 'cam', 'loc', 'speech'].includes(screenId)) {
+                    updateStepper(screenId);
+                }
+            }, 50);
         }
 
-        // ============ MICROPHONE ============
-        async function requestMicrophone() {
-            const card = document.getElementById('micCard');
-            const btn = document.getElementById('micBtn');
-            const icon = document.getElementById('micIcon');
-            const status = document.getElementById('micStatus');
-            const errorEl = document.getElementById('micError');
+        // ============ STEPPER UI ============
+        function updateStepper(currentStep) {
+            const steps = ['mic', 'cam', 'loc', 'speech'];
+            const stepNames = ['Mic', 'Cam', 'GPS', 'Voice'];
+            const currentIndex = steps.indexOf(currentStep);
 
-            card.className = 'permission-card bg-white border-2 testing';
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-            btn.disabled = true;
-            status.textContent = 'Requesting microphone access...';
-            errorEl.classList.add('hidden');
+            steps.forEach(step => {
+                const stepperEl = document.getElementById(`stepper-${step}`);
+                if (!stepperEl) return;
 
+                let html = '';
+                steps.forEach((s, i) => {
+                    const result = permissionResults[s];
+                    let indicatorClass = 'pending';
+                    let icon = i + 1;
+
+                    if (i < currentIndex) {
+                        if (result.status === 'granted') {
+                            indicatorClass = 'completed';
+                            icon = '<i class="fas fa-check text-xs"></i>';
+                        } else if (result.status === 'denied') {
+                            indicatorClass = 'failed';
+                            icon = '<i class="fas fa-times text-xs"></i>';
+                        } else if (result.status === 'skipped') {
+                            indicatorClass = 'skipped';
+                            icon = '<i class="fas fa-forward text-xs"></i>';
+                        }
+                    } else if (i === currentIndex) {
+                        indicatorClass = 'active';
+                    }
+
+                    html += `<div class="step-indicator ${indicatorClass}">${icon}</div>`;
+
+                    if (i < steps.length - 1) {
+                        const lineClass = i < currentIndex ? 'completed' : '';
+                        html += `<div class="step-line ${lineClass}"></div>`;
+                    }
+                });
+
+                stepperEl.innerHTML = html;
+            });
+        }
+
+        // ============ SEQUENTIAL FLOW ============
+        function startPermissionFlow() {
+            log('Starting sequential permission flow', 'info');
+
+            // Show iOS warning on speech pre-screen if on iOS
+            if (isIOS) {
+                document.getElementById('ios-speech-warning').classList.remove('hidden');
+            }
+
+            showScreen('mic');
+        }
+
+        function skipToManual() {
+            log('Skipping to manual setup', 'info');
+            showScreen('manual');
+            initManualScreen();
+        }
+
+        function skipPermission(type) {
+            log(`Skipping ${type} permission`, 'warn');
+            permissionResults[type].status = 'skipped';
+            proceedToNext(type);
+        }
+
+        function proceedToNext(current) {
+            const sequence = ['mic', 'cam', 'loc', 'speech', 'summary'];
+            const currentIndex = sequence.indexOf(current);
+            const nextScreen = sequence[currentIndex + 1];
+
+            setTimeout(() => {
+                showScreen(nextScreen);
+                if (nextScreen === 'summary') {
+                    renderSummary();
+                }
+            }, current === 'summary' ? 0 : 1500);
+        }
+
+        // ============ MICROPHONE PERMISSION ============
+        async function requestMicPermission() {
+            const preEl = document.getElementById('mic-pre');
+            const loadingEl = document.getElementById('mic-loading');
+            const successEl = document.getElementById('mic-success');
+            const errorEl = document.getElementById('mic-error');
+
+            preEl.classList.add('hidden');
+            loadingEl.classList.remove('hidden');
             log('Requesting microphone permission...');
 
-            // Check if mediaDevices API exists
             if (!hasMediaDevices) {
-                log('MediaDevices API not available', 'error');
                 showMicError('ERR_API', 'MediaDevices API not supported', 'Use a modern browser (Chrome, Safari, Firefox)');
                 return;
             }
 
-            // Check secure context
             if (!isSecureContext) {
-                log('Not in secure context (HTTPS required)', 'error');
-                showMicError('ERR_SEC', 'HTTPS required for microphone', 'Access this page via HTTPS');
+                showMicError('ERR_SEC', 'HTTPS required', 'Access this page via HTTPS');
                 return;
             }
 
             try {
-                log('Calling getUserMedia({ audio: true })...');
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-                // Get device info
-                const audioTracks = stream.getAudioTracks();
-                if (audioTracks.length > 0) {
-                    const track = audioTracks[0];
-                    log(`Microphone: ${track.label}`, 'success');
-                    log(`Track state: ${track.readyState}`, 'info');
-                    log(`Track enabled: ${track.enabled}`, 'info');
-
-                    const settings = track.getSettings();
-                    if (settings.sampleRate) log(`Sample rate: ${settings.sampleRate}Hz`, 'info');
-                    if (settings.channelCount) log(`Channels: ${settings.channelCount}`, 'info');
+                const tracks = stream.getAudioTracks();
+                if (tracks.length > 0) {
+                    log(`Microphone: ${tracks[0].label}`, 'success');
                 }
-
                 stream.getTracks().forEach(track => track.stop());
 
-                permissions.mic = true;
+                permissionResults.mic.status = 'granted';
                 localStorage.setItem('fvp_mic_granted', 'true');
                 localStorage.setItem('fvp_mic_timestamp', Date.now().toString());
 
-                card.className = 'permission-card bg-white border-2 success';
-                icon.className = 'fas fa-check text-safety-green text-xl pulse-check';
-                btn.innerHTML = '<i class="fas fa-check"></i>';
-                btn.className = 'px-4 py-2 bg-safety-green text-white font-bold text-xs uppercase cursor-default';
-                status.textContent = 'Microphone enabled';
-                status.className = 'text-sm text-safety-green mt-1 font-medium';
-
+                loadingEl.classList.add('hidden');
+                successEl.classList.remove('hidden');
                 log('Microphone permission granted!', 'success');
 
-                // Show mic test section
-                document.getElementById('micTestCard').classList.remove('hidden');
-
+                proceedToNext('mic');
             } catch (err) {
                 log(`Microphone error: ${err.name} - ${err.message}`, 'error');
                 const errInfo = getErrorInfo(err);
+                permissionResults.mic.status = 'denied';
+                permissionResults.mic.error = errInfo;
                 showMicError(errInfo.code, errInfo.message, errInfo.fix);
             }
-            updateSummary();
         }
 
         function showMicError(code, message, fix) {
-            const card = document.getElementById('micCard');
-            const btn = document.getElementById('micBtn');
-            const icon = document.getElementById('micIcon');
-            const status = document.getElementById('micStatus');
-            const errorEl = document.getElementById('micError');
-
-            card.className = 'permission-card bg-white border-2 error';
-            icon.className = 'fas fa-microphone-slash text-red-500 text-xl';
-            btn.innerHTML = 'Retry';
-            btn.className = 'px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase transition-colors';
-            btn.disabled = false;
-            status.textContent = `Error: ${message}`;
-            status.className = 'text-sm text-red-500 mt-1';
-            errorEl.innerHTML = `<strong>${code}</strong>: ${fix}`;
-            errorEl.classList.remove('hidden');
+            document.getElementById('mic-loading').classList.add('hidden');
+            document.getElementById('mic-error').classList.remove('hidden');
+            document.getElementById('mic-error-message').textContent = message;
+            document.getElementById('mic-error-fix').textContent = fix;
         }
 
-        // ============ MIC TEST ============
-        async function startMicTest() {
-            log('Starting microphone test...');
+        // ============ CAMERA PERMISSION ============
+        async function requestCamPermission() {
+            const preEl = document.getElementById('cam-pre');
+            const loadingEl = document.getElementById('cam-loading');
+            const successEl = document.getElementById('cam-success');
 
-            try {
-                micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                analyser = audioContext.createAnalyser();
-                const source = audioContext.createMediaStreamSource(micStream);
-                source.connect(analyser);
-                analyser.fftSize = 256;
+            preEl.classList.add('hidden');
+            loadingEl.classList.remove('hidden');
+            log('Requesting camera permission...');
 
-                document.getElementById('micTestBtn').classList.add('hidden');
-                document.getElementById('micTestStopBtn').classList.remove('hidden');
-
-                const dataArray = new Uint8Array(analyser.frequencyBinCount);
-                let maxLevel = 0;
-
-                micTestInterval = setInterval(() => {
-                    analyser.getByteFrequencyData(dataArray);
-                    const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
-                    const level = Math.min(100, (average / 128) * 100);
-
-                    if (level > maxLevel) maxLevel = level;
-
-                    const levelBar = document.getElementById('micLevel');
-                    const levelText = document.getElementById('micLevelText');
-
-                    levelBar.style.width = `${level}%`;
-
-                    if (level > 50) {
-                        levelBar.className = 'mic-level h-full bg-safety-green';
-                        levelText.textContent = `Strong signal (${Math.round(level)}%)`;
-                        levelText.className = 'text-xs text-safety-green mt-1 font-medium';
-                    } else if (level > 20) {
-                        levelBar.className = 'mic-level h-full bg-dot-yellow';
-                        levelText.textContent = `Moderate signal (${Math.round(level)}%)`;
-                        levelText.className = 'text-xs text-dot-yellow mt-1';
-                    } else if (level > 5) {
-                        levelBar.className = 'mic-level h-full bg-dot-orange';
-                        levelText.textContent = `Weak signal (${Math.round(level)}%)`;
-                        levelText.className = 'text-xs text-dot-orange mt-1';
-                    } else {
-                        levelBar.className = 'mic-level h-full bg-slate-400';
-                        levelText.textContent = 'No audio detected - speak into mic';
-                        levelText.className = 'text-xs text-slate-500 mt-1';
-                    }
-                }, 100);
-
-                log('Mic test started - speak into microphone', 'info');
-
-            } catch (err) {
-                log(`Mic test error: ${err.message}`, 'error');
-                const result = document.getElementById('micTestResult');
-                result.textContent = `Test failed: ${err.message}`;
-                result.className = 'text-xs text-center mt-2 text-red-500';
-                result.classList.remove('hidden');
-            }
-        }
-
-        function stopMicTest() {
-            if (micTestInterval) {
-                clearInterval(micTestInterval);
-                micTestInterval = null;
-            }
-            if (micStream) {
-                micStream.getTracks().forEach(track => track.stop());
-                micStream = null;
-            }
-            if (audioContext) {
-                audioContext.close();
-                audioContext = null;
-            }
-
-            document.getElementById('micTestBtn').classList.remove('hidden');
-            document.getElementById('micTestStopBtn').classList.add('hidden');
-
-            const levelBar = document.getElementById('micLevel');
-            const level = parseFloat(levelBar.style.width) || 0;
-
-            const result = document.getElementById('micTestResult');
-            if (level > 20) {
-                result.textContent = '✅ Microphone is working correctly';
-                result.className = 'text-xs text-center mt-2 text-safety-green font-medium';
-                log('Mic test passed - audio detected', 'success');
-            } else {
-                result.textContent = '⚠️ Low audio - check microphone placement';
-                result.className = 'text-xs text-center mt-2 text-dot-orange font-medium';
-                log('Mic test warning - low audio levels', 'warn');
-            }
-            result.classList.remove('hidden');
-        }
-
-        // ============ SPEECH RECOGNITION ============
-        async function testSpeechRecognition() {
-            const card = document.getElementById('speechCard');
-            const btn = document.getElementById('speechBtn');
-            const icon = document.getElementById('speechIcon');
-            const status = document.getElementById('speechStatus');
-            const errorEl = document.getElementById('speechError');
-            const testArea = document.getElementById('speechTestArea');
-            const transcript = document.getElementById('speechTranscript');
-
-            log('Testing speech recognition...');
-
-            // Check if API exists
-            if (!hasSpeechRecognition) {
-                log('SpeechRecognition API not available', 'error');
-                showSpeechError('SPE_API', 'Speech Recognition not supported', 'Use Chrome, Safari, or Edge browser');
+            if (!hasMediaDevices) {
+                showCamError('ERR_API', 'Camera API not supported', 'Use a modern browser');
                 return;
             }
 
-            card.className = 'permission-card bg-white border-2 testing';
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-            btn.disabled = true;
-            status.textContent = 'Starting speech recognition...';
-            errorEl.classList.add('hidden');
-            testArea.classList.remove('hidden');
-            transcript.textContent = 'Listening... (say something)';
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                const tracks = stream.getVideoTracks();
+                if (tracks.length > 0) {
+                    log(`Camera: ${tracks[0].label}`, 'success');
+                }
+                stream.getTracks().forEach(track => track.stop());
+
+                permissionResults.cam.status = 'granted';
+                localStorage.setItem('fvp_cam_granted', 'true');
+
+                loadingEl.classList.add('hidden');
+                successEl.classList.remove('hidden');
+                log('Camera permission granted!', 'success');
+
+                proceedToNext('cam');
+            } catch (err) {
+                log(`Camera error: ${err.name} - ${err.message}`, 'error');
+                const errInfo = getErrorInfo(err);
+                permissionResults.cam.status = 'denied';
+                permissionResults.cam.error = errInfo;
+                showCamError(errInfo.code, errInfo.message, errInfo.fix);
+            }
+        }
+
+        function showCamError(code, message, fix) {
+            document.getElementById('cam-loading').classList.add('hidden');
+            document.getElementById('cam-error').classList.remove('hidden');
+            document.getElementById('cam-error-message').textContent = message;
+            document.getElementById('cam-error-fix').textContent = fix;
+        }
+
+        // ============ LOCATION PERMISSION ============
+        async function requestLocPermission() {
+            const preEl = document.getElementById('loc-pre');
+            const loadingEl = document.getElementById('loc-loading');
+            const successEl = document.getElementById('loc-success');
+
+            preEl.classList.add('hidden');
+            loadingEl.classList.remove('hidden');
+            log('Requesting location permission...');
+
+            if (!navigator.geolocation) {
+                showLocError('GEO_API', 'Geolocation not supported', 'Use a modern browser');
+                return;
+            }
+
+            try {
+                const position = await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, {
+                        enableHighAccuracy: true,
+                        timeout: 15000,
+                        maximumAge: 0
+                    });
+                });
+
+                log(`Location: ${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}`, 'success');
+                log(`Accuracy: ${position.coords.accuracy.toFixed(0)}m`, 'info');
+
+                permissionResults.loc.status = 'granted';
+                localStorage.setItem('fvp_loc_granted', 'true');
+
+                loadingEl.classList.add('hidden');
+                successEl.classList.remove('hidden');
+                document.getElementById('loc-success-coords').textContent = `Location: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`;
+                log('Location permission granted!', 'success');
+
+                proceedToNext('loc');
+            } catch (err) {
+                log(`Location error: code=${err.code}, message=${err.message}`, 'error');
+                const errInfo = getErrorInfo(err);
+                permissionResults.loc.status = 'denied';
+                permissionResults.loc.error = errInfo;
+                showLocError(errInfo.code, errInfo.message, errInfo.fix);
+            }
+        }
+
+        function showLocError(code, message, fix) {
+            document.getElementById('loc-loading').classList.add('hidden');
+            document.getElementById('loc-error').classList.remove('hidden');
+            document.getElementById('loc-error-message').textContent = message;
+            document.getElementById('loc-error-fix').textContent = fix;
+        }
+
+        // ============ SPEECH RECOGNITION ============
+        async function requestSpeechPermission() {
+            const preEl = document.getElementById('speech-pre');
+            const loadingEl = document.getElementById('speech-loading');
+            const successEl = document.getElementById('speech-success');
+            const errorEl = document.getElementById('speech-error');
+            const transcript = document.getElementById('speech-transcript');
+
+            preEl.classList.add('hidden');
+            loadingEl.classList.remove('hidden');
+            log('Testing speech recognition...');
+
+            if (!hasSpeechRecognition) {
+                showSpeechError('SPE_API', 'Speech Recognition not supported', 'Use Chrome, Safari, or Edge browser', false);
+                return;
+            }
 
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             recognition = new SpeechRecognition();
@@ -682,19 +1221,14 @@
             recognition.lang = 'en-US';
             recognition.maxAlternatives = 1;
 
-            log(`SpeechRecognition config: lang=${recognition.lang}, continuous=${recognition.continuous}`, 'info');
-
             let hasResult = false;
             let timeout = null;
 
             recognition.onstart = () => {
                 log('Speech recognition started', 'info');
-                status.textContent = 'Listening...';
-
-                // Timeout after 10 seconds
                 timeout = setTimeout(() => {
                     if (!hasResult) {
-                        log('Speech recognition timeout - no speech detected', 'warn');
+                        log('Speech timeout - no speech detected', 'warn');
                         recognition.stop();
                     }
                 }, 10000);
@@ -715,7 +1249,6 @@
                 }
 
                 transcript.textContent = finalTranscript || interimTranscript || 'Listening...';
-
                 if (finalTranscript) {
                     log(`Speech recognized: "${finalTranscript}"`, 'success');
                 }
@@ -726,280 +1259,199 @@
                 log('Speech recognition ended', 'info');
 
                 if (hasResult) {
-                    permissions.speech = true;
+                    permissionResults.speech.status = 'granted';
                     localStorage.setItem('fvp_speech_granted', 'true');
 
-                    card.className = 'permission-card bg-white border-2 success';
-                    icon.className = 'fas fa-check text-safety-green text-xl pulse-check';
-                    btn.innerHTML = '<i class="fas fa-check"></i>';
-                    btn.className = 'px-4 py-2 bg-safety-green text-white font-bold text-xs uppercase cursor-default';
-                    status.textContent = 'Speech recognition working';
-                    status.className = 'text-sm text-safety-green mt-1 font-medium';
+                    loadingEl.classList.add('hidden');
+                    successEl.classList.remove('hidden');
                     log('Speech recognition test passed!', 'success');
+
+                    proceedToNext('speech');
                 } else {
-                    card.className = 'permission-card bg-white border-2 warning';
-                    icon.className = 'fas fa-comment-slash text-dot-orange text-xl';
-                    btn.innerHTML = 'Retry';
-                    btn.className = 'px-4 py-2 bg-dot-orange hover:bg-orange-700 text-white font-bold text-xs uppercase transition-colors';
-                    btn.disabled = false;
-                    status.textContent = 'No speech detected';
-                    status.className = 'text-sm text-dot-orange mt-1';
-                    transcript.textContent = 'No speech was detected. Try again and speak clearly.';
+                    // No speech detected - show as warning, not error
+                    permissionResults.speech.status = 'granted'; // Still mark as working
+                    localStorage.setItem('fvp_speech_granted', 'true');
+
+                    loadingEl.classList.add('hidden');
+                    successEl.classList.remove('hidden');
+                    log('Speech recognition available (no speech detected)', 'warn');
+
+                    proceedToNext('speech');
                 }
-                updateSummary();
             };
 
             recognition.onerror = (event) => {
                 clearTimeout(timeout);
                 log(`Speech recognition error: ${event.error}`, 'error');
 
-                // Additional debugging for iOS
-                if (isIOS) {
-                    log(`iOS version detected from UA`, 'info');
-                    if (event.error === 'service-not-allowed') {
-                        log('SPE_006: This error means Siri/Dictation is not enabled on this iOS device', 'error');
-                        log('User needs to: 1) Enable Siri in Settings, 2) Enable Dictation in Keyboard settings', 'warn');
-                    }
-                }
-
                 const errInfo = getErrorInfo({ error: event.error });
-                showSpeechError(errInfo.code, errInfo.message, errInfo.fix, event.error);
-                testArea.classList.add('hidden');
+                permissionResults.speech.status = 'denied';
+                permissionResults.speech.error = errInfo;
+
+                const isServiceNotAllowed = event.error === 'service-not-allowed';
+                showSpeechError(errInfo.code, errInfo.message, errInfo.fix, isServiceNotAllowed && isIOS);
             };
 
             try {
                 recognition.start();
             } catch (err) {
                 log(`Failed to start speech recognition: ${err.message}`, 'error');
-                showSpeechError('SPE_START', 'Failed to start', 'Reload page and try again');
+                showSpeechError('SPE_START', 'Failed to start', 'Reload page and try again', false);
             }
         }
 
-        function showSpeechError(code, message, fix, errorType = '') {
-            const card = document.getElementById('speechCard');
-            const btn = document.getElementById('speechBtn');
-            const icon = document.getElementById('speechIcon');
-            const status = document.getElementById('speechStatus');
-            const errorEl = document.getElementById('speechError');
-            const iosHelpPanel = document.getElementById('iosHelpPanel');
+        function showSpeechError(code, message, fix, showIOSHelp) {
+            document.getElementById('speech-loading').classList.add('hidden');
+            document.getElementById('speech-error').classList.remove('hidden');
+            document.getElementById('speech-error-message').textContent = message;
+            document.getElementById('speech-error-fix').textContent = fix;
 
-            card.className = 'permission-card bg-white border-2 error';
-            icon.className = 'fas fa-comment-slash text-red-500 text-xl';
-            btn.innerHTML = 'Retry';
-            btn.className = 'px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase transition-colors';
-            btn.disabled = false;
-            status.textContent = `Error: ${message}`;
-            status.className = 'text-sm text-red-500 mt-1';
-            errorEl.innerHTML = `<strong>${code}</strong>: ${fix}`;
-            errorEl.classList.remove('hidden');
-
-            // Show iOS help panel for service-not-allowed errors on iOS
-            if ((code === 'SPE_006' || errorType === 'service-not-allowed') && isIOS) {
-                iosHelpPanel.classList.remove('hidden');
-                log('Showing iOS Siri/Dictation help panel', 'info');
+            if (showIOSHelp) {
+                document.getElementById('ios-help-panel').classList.remove('hidden');
+                document.getElementById('speech-error-help').classList.add('hidden');
+                document.getElementById('groq-alternative').classList.remove('hidden');
+                log('Showing iOS Siri/Dictation help', 'info');
             } else {
-                iosHelpPanel.classList.add('hidden');
+                document.getElementById('ios-help-panel').classList.add('hidden');
+                document.getElementById('speech-error-help').classList.remove('hidden');
+                document.getElementById('groq-alternative').classList.add('hidden');
             }
-
-            updateSummary();
         }
 
-        // ============ LOCATION ============
-        async function requestLocation() {
-            const card = document.getElementById('locCard');
-            const btn = document.getElementById('locBtn');
-            const icon = document.getElementById('locIcon');
-            const status = document.getElementById('locStatus');
-            const errorEl = document.getElementById('locError');
-
-            card.className = 'permission-card bg-white border-2 testing';
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-            btn.disabled = true;
-            status.textContent = 'Getting location...';
-            errorEl.classList.add('hidden');
-
-            log('Requesting location permission...');
-
-            if (!navigator.geolocation) {
-                log('Geolocation API not available', 'error');
-                showLocError('GEO_API', 'Geolocation not supported', 'Use a modern browser');
-                return;
-            }
-
-            try {
-                const position = await new Promise((resolve, reject) => {
-                    navigator.geolocation.getCurrentPosition(resolve, reject, {
-                        enableHighAccuracy: true,
-                        timeout: 15000,
-                        maximumAge: 0
-                    });
-                });
-
-                log(`Location: ${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}`, 'success');
-                log(`Accuracy: ${position.coords.accuracy.toFixed(0)}m`, 'info');
-
-                permissions.loc = true;
-                localStorage.setItem('fvp_loc_granted', 'true');
-
-                card.className = 'permission-card bg-white border-2 success';
-                icon.className = 'fas fa-check text-safety-green text-xl pulse-check';
-                btn.innerHTML = '<i class="fas fa-check"></i>';
-                btn.className = 'px-4 py-2 bg-safety-green text-white font-bold text-xs uppercase cursor-default';
-                status.textContent = `Location enabled (±${Math.round(position.coords.accuracy)}m)`;
-                status.className = 'text-sm text-safety-green mt-1 font-medium';
-
-            } catch (err) {
-                log(`Location error: code=${err.code}, message=${err.message}`, 'error');
-                const errInfo = getErrorInfo(err);
-                showLocError(errInfo.code, errInfo.message, errInfo.fix);
-            }
-            updateSummary();
+        function showApiKeySetup() {
+            // Scroll to and expand the API key section
+            document.getElementById('api-key-form').classList.remove('hidden');
+            document.getElementById('api-key-section').scrollIntoView({ behavior: 'smooth' });
         }
 
-        function showLocError(code, message, fix) {
-            const card = document.getElementById('locCard');
-            const btn = document.getElementById('locBtn');
-            const icon = document.getElementById('locIcon');
-            const status = document.getElementById('locStatus');
-            const errorEl = document.getElementById('locError');
+        // ============ SUMMARY SCREEN ============
+        function renderSummary() {
+            const types = ['mic', 'cam', 'loc', 'speech'];
+            const icons = {
+                mic: 'fa-microphone',
+                cam: 'fa-camera',
+                loc: 'fa-location-dot',
+                speech: 'fa-comment-dots'
+            };
+            const colors = {
+                mic: 'bg-dot-navy',
+                cam: 'bg-dot-orange',
+                loc: 'bg-safety-green',
+                speech: 'bg-violet-600'
+            };
 
-            card.className = 'permission-card bg-white border-2 error';
-            icon.className = 'fas fa-location-crosshairs text-red-500 text-xl';
-            btn.innerHTML = 'Retry';
-            btn.className = 'px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase transition-colors';
-            btn.disabled = false;
-            status.textContent = `Error: ${message}`;
-            status.className = 'text-sm text-red-500 mt-1';
-            errorEl.innerHTML = `<strong>${code}</strong>: ${fix}`;
-            errorEl.classList.remove('hidden');
-        }
+            let grantedCount = 0;
+            let deniedCount = 0;
+            let skippedCount = 0;
 
-        // ============ CAMERA ============
-        async function requestCamera() {
-            const card = document.getElementById('camCard');
-            const btn = document.getElementById('camBtn');
-            const icon = document.getElementById('camIcon');
-            const status = document.getElementById('camStatus');
-            const errorEl = document.getElementById('camError');
+            types.forEach(type => {
+                const result = permissionResults[type];
+                const card = document.getElementById(`result-${type}`);
+                const iconEl = document.getElementById(`result-${type}-icon`);
+                const statusEl = document.getElementById(`result-${type}-status`);
+                const badgeEl = document.getElementById(`result-${type}-badge`);
 
-            card.className = 'permission-card bg-white border-2 testing';
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-            btn.disabled = true;
-            status.textContent = 'Testing camera...';
-            errorEl.classList.add('hidden');
-
-            log('Requesting camera permission...');
-
-            if (!hasMediaDevices) {
-                log('MediaDevices API not available', 'error');
-                showCamError('CAM_API', 'Camera API not supported', 'Use a modern browser');
-                return;
-            }
-
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment' }
-                });
-
-                const videoTracks = stream.getVideoTracks();
-                if (videoTracks.length > 0) {
-                    log(`Camera: ${videoTracks[0].label}`, 'success');
+                if (result.status === 'granted') {
+                    grantedCount++;
+                    card.classList.add('success');
+                    iconEl.className = `w-12 h-12 bg-safety-green flex items-center justify-center rounded-full flex-shrink-0`;
+                    iconEl.innerHTML = `<i class="fas fa-check text-white text-lg"></i>`;
+                    statusEl.textContent = 'Enabled';
+                    statusEl.className = 'text-xs text-safety-green font-medium';
+                    badgeEl.className = 'fas fa-check-circle text-safety-green';
+                } else if (result.status === 'denied') {
+                    deniedCount++;
+                    card.classList.add('failed');
+                    iconEl.className = `w-12 h-12 bg-red-500 flex items-center justify-center rounded-full flex-shrink-0`;
+                    iconEl.innerHTML = `<i class="fas fa-times text-white text-lg"></i>`;
+                    statusEl.textContent = result.error ? result.error.message : 'Permission denied';
+                    statusEl.className = 'text-xs text-red-500';
+                    badgeEl.className = 'fas fa-times-circle text-red-500';
+                } else if (result.status === 'skipped') {
+                    skippedCount++;
+                    card.classList.add('skipped');
+                    iconEl.className = `w-12 h-12 bg-slate-400 flex items-center justify-center rounded-full flex-shrink-0`;
+                    iconEl.innerHTML = `<i class="fas ${icons[type]} text-white text-lg"></i>`;
+                    statusEl.textContent = 'Skipped';
+                    statusEl.className = 'text-xs text-slate-500';
+                    badgeEl.className = 'fas fa-minus-circle text-slate-400';
                 }
+            });
 
-                stream.getTracks().forEach(track => track.stop());
+            // Update header
+            const title = document.getElementById('summary-title');
+            const subtitle = document.getElementById('summary-subtitle');
+            const headerIcon = document.getElementById('summary-header-icon');
+            const messageText = document.getElementById('summary-message-text');
 
-                permissions.cam = true;
-                localStorage.setItem('fvp_cam_granted', 'true');
-
-                card.className = 'permission-card bg-white border-2 success';
-                icon.className = 'fas fa-check text-safety-green text-xl pulse-check';
-                btn.innerHTML = '<i class="fas fa-check"></i>';
-                btn.className = 'px-4 py-2 bg-safety-green text-white font-bold text-xs uppercase cursor-default';
-                status.textContent = 'Camera enabled';
-                status.className = 'text-sm text-safety-green mt-1 font-medium';
-
-            } catch (err) {
-                log(`Camera error: ${err.name} - ${err.message}`, 'error');
-                const errInfo = getErrorInfo(err);
-                showCamError(errInfo.code, errInfo.message, errInfo.fix);
-            }
-            updateSummary();
-        }
-
-        function showCamError(code, message, fix) {
-            const card = document.getElementById('camCard');
-            const btn = document.getElementById('camBtn');
-            const icon = document.getElementById('camIcon');
-            const status = document.getElementById('camStatus');
-            const errorEl = document.getElementById('camError');
-
-            card.className = 'permission-card bg-white border-2 error';
-            icon.className = 'fas fa-camera-slash text-red-500 text-xl';
-            btn.innerHTML = 'Retry';
-            btn.className = 'px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase transition-colors';
-            btn.disabled = false;
-            status.textContent = `Error: ${message}`;
-            status.className = 'text-sm text-red-500 mt-1';
-            errorEl.innerHTML = `<strong>${code}</strong>: ${fix}`;
-            errorEl.classList.remove('hidden');
-        }
-
-        // ============ SUMMARY ============
-        function updateSummary() {
-            const summary = document.getElementById('statusSummary');
-            const icon = document.getElementById('summaryIcon');
-            const title = document.getElementById('summaryTitle');
-            const text = document.getElementById('summaryText');
-
-            const enabledCount = Object.values(permissions).filter(v => v).length;
-            const totalRequired = 4; // mic, speech, loc, cam
-
-            if (enabledCount === totalRequired) {
-                summary.className = 'bg-safety-green/10 border-2 border-safety-green p-4';
-                icon.className = 'w-10 h-10 bg-safety-green flex items-center justify-center';
-                icon.innerHTML = '<i class="fas fa-check text-white"></i>';
-                title.textContent = 'All Systems Ready';
-                title.className = 'font-bold text-safety-green text-sm uppercase';
-                text.textContent = 'Full functionality enabled';
-                text.className = 'text-xs text-safety-green';
-            } else if (enabledCount >= 2) {
-                summary.className = 'bg-dot-orange/10 border-2 border-dot-orange p-4';
-                icon.className = 'w-10 h-10 bg-dot-orange flex items-center justify-center';
-                icon.innerHTML = '<i class="fas fa-exclamation text-white"></i>';
-                title.textContent = `${enabledCount}/${totalRequired} Permissions`;
-                title.className = 'font-bold text-dot-orange text-sm uppercase';
-                text.textContent = 'Some features may be limited';
-                text.className = 'text-xs text-dot-orange';
+            if (grantedCount === 4) {
+                title.textContent = 'All Systems Ready!';
+                subtitle.textContent = 'Full functionality enabled';
+                headerIcon.className = 'fas fa-check text-dot-navy text-2xl';
+                messageText.textContent = 'You have access to all FieldVoice Pro features. Start creating voice-powered field reports!';
+            } else if (grantedCount >= 2) {
+                title.textContent = 'Partial Setup Complete';
+                subtitle.textContent = `${grantedCount} of 4 permissions enabled`;
+                headerIcon.className = 'fas fa-exclamation text-dot-navy text-2xl';
+                messageText.textContent = `Some features may be limited. You can enable additional permissions later from your browser settings.`;
             } else {
-                summary.className = 'bg-white border-2 border-slate-200 p-4';
-                icon.className = 'w-10 h-10 bg-slate-200 flex items-center justify-center';
-                icon.innerHTML = '<i class="fas fa-clock text-slate-400"></i>';
-                title.textContent = 'Setup Required';
-                title.className = 'font-bold text-slate-800 text-sm uppercase';
-                text.textContent = 'Enable permissions above';
-                text.className = 'text-xs text-slate-500';
+                title.textContent = 'Limited Functionality';
+                subtitle.textContent = `Only ${grantedCount} permission${grantedCount !== 1 ? 's' : ''} enabled`;
+                headerIcon.className = 'fas fa-exclamation-triangle text-dot-navy text-2xl';
+                messageText.textContent = 'Many features will be unavailable. Consider enabling more permissions for the best experience.';
+            }
+
+            // Show retry button if any failed
+            if (deniedCount > 0) {
+                document.getElementById('retry-failed-btn').classList.remove('hidden');
+            }
+
+            // Load API key if saved
+            const savedKey = localStorage.getItem('groq_api_key');
+            if (savedKey) {
+                document.getElementById('apiKeyInput').value = savedKey;
+                document.getElementById('api-key-preview').textContent = 'API key configured';
+                document.getElementById('api-key-preview').className = 'text-xs text-safety-green font-medium';
             }
         }
 
-        function finishSetup() {
-            localStorage.setItem('fvp_onboarded', 'true');
-            log('Setup complete - redirecting to dashboard', 'success');
-            window.location.href = 'index.html';
+        function retryFailed() {
+            // Find first failed permission and restart from there
+            const sequence = ['mic', 'cam', 'loc', 'speech'];
+            for (const type of sequence) {
+                if (permissionResults[type].status === 'denied') {
+                    // Reset the states
+                    document.getElementById(`${type}-pre`).classList.remove('hidden');
+                    document.getElementById(`${type}-loading`).classList.add('hidden');
+                    document.getElementById(`${type}-success`).classList.add('hidden');
+                    document.getElementById(`${type}-error`).classList.add('hidden');
+
+                    permissionResults[type].status = 'pending';
+                    permissionResults[type].error = null;
+
+                    showScreen(type);
+                    return;
+                }
+            }
         }
 
-        // ============ GROQ API KEY ============
+        function toggleApiKey() {
+            const form = document.getElementById('api-key-form');
+            const toggle = document.getElementById('api-key-toggle');
+            form.classList.toggle('hidden');
+            toggle.className = form.classList.contains('hidden') ? 'fas fa-chevron-down text-slate-400' : 'fas fa-chevron-up text-slate-400';
+        }
+
+        // ============ API KEY ============
         function saveApiKey() {
             const input = document.getElementById('apiKeyInput');
             const key = input.value.trim();
             const message = document.getElementById('apiKeyMessage');
-            const badge = document.getElementById('apiKeyBadge');
-            const card = document.getElementById('apiKeyCard');
 
             if (!key) {
                 message.textContent = 'Please enter an API key';
                 message.className = 'text-xs mt-2 text-red-500';
                 message.classList.remove('hidden');
-                log('API key save failed - empty key', 'error');
                 return;
             }
 
@@ -1007,7 +1459,6 @@
                 message.textContent = 'Invalid key format (should start with gsk_)';
                 message.className = 'text-xs mt-2 text-dot-orange';
                 message.classList.remove('hidden');
-                log('API key save failed - invalid format', 'warn');
                 return;
             }
 
@@ -1015,31 +1466,46 @@
             message.textContent = 'API key saved successfully!';
             message.className = 'text-xs mt-2 text-safety-green';
             message.classList.remove('hidden');
-            badge.classList.remove('hidden');
-            card.className = 'permission-card bg-white border-2 success';
-            log('Groq API key saved successfully', 'success');
 
-            // Hide message after 3 seconds
-            setTimeout(() => {
-                message.classList.add('hidden');
-            }, 3000);
+            document.getElementById('api-key-preview').textContent = 'API key configured';
+            document.getElementById('api-key-preview').className = 'text-xs text-safety-green font-medium';
+
+            log('Groq API key saved', 'success');
+
+            setTimeout(() => message.classList.add('hidden'), 3000);
         }
 
-        function loadApiKey() {
-            const saved = localStorage.getItem('groq_api_key');
-            if (saved) {
-                document.getElementById('apiKeyInput').value = saved;
-                document.getElementById('apiKeyBadge').classList.remove('hidden');
-                document.getElementById('apiKeyCard').className = 'permission-card bg-white border-2 success';
-                document.getElementById('apiKeyStatus').textContent = 'API key configured';
-                document.getElementById('apiKeyStatus').className = 'text-sm text-safety-green mt-1 font-medium';
-                log('Groq API key loaded from storage', 'info');
+        function saveManualApiKey() {
+            const input = document.getElementById('manualApiKeyInput');
+            const key = input.value.trim();
+            const message = document.getElementById('manualApiKeyMessage');
+
+            if (!key) {
+                message.textContent = 'Please enter an API key';
+                message.className = 'text-xs mt-2 text-red-500';
+                message.classList.remove('hidden');
+                return;
             }
+
+            if (!key.startsWith('gsk_')) {
+                message.textContent = 'Invalid format (should start with gsk_)';
+                message.className = 'text-xs mt-2 text-dot-orange';
+                message.classList.remove('hidden');
+                return;
+            }
+
+            localStorage.setItem('groq_api_key', key);
+            message.textContent = 'API key saved!';
+            message.className = 'text-xs mt-2 text-safety-green';
+            message.classList.remove('hidden');
+            log('Groq API key saved', 'success');
+
+            setTimeout(() => message.classList.add('hidden'), 3000);
         }
 
-        // ============ INIT ============
-        function init() {
-            // Log device info
+        // ============ MANUAL MODE HANDLERS ============
+        function initManualScreen() {
+            // Set device info
             const deviceText = [];
             if (isIOS) deviceText.push('iOS');
             if (isAndroid) deviceText.push('Android');
@@ -1049,68 +1515,284 @@
             if (isMobile) deviceText.push('Mobile');
             if (!isMobile) deviceText.push('Desktop');
 
-            const deviceStr = deviceText.join(' • ') + ` | Secure: ${isSecureContext ? 'Yes' : 'No'}`;
+            const deviceStr = deviceText.join(' + ') + ` | Secure: ${isSecureContext ? 'Yes' : 'No'}`;
             document.getElementById('deviceInfoText').textContent = deviceStr;
 
-            log('=== Permission Setup Started ===', 'info');
+            log('=== Manual Setup Mode ===', 'info');
             log(`Device: ${deviceStr}`, 'info');
-            log(`MediaDevices API: ${hasMediaDevices ? 'Available' : 'NOT AVAILABLE'}`, hasMediaDevices ? 'info' : 'error');
-            log(`SpeechRecognition API: ${hasSpeechRecognition ? 'Available' : 'NOT AVAILABLE'}`, hasSpeechRecognition ? 'info' : 'error');
-            log(`User Agent: ${navigator.userAgent}`, 'info');
-
-            // iOS Safari specific warnings
-            if (isIOSSafari) {
-                log('⚠️ iOS Safari detected - speech recognition requires user gesture', 'warn');
-            }
 
             // Check existing permissions
             checkExistingPermissions();
 
-            // Load API key if saved
-            loadApiKey();
+            // Load API key
+            const savedKey = localStorage.getItem('groq_api_key');
+            if (savedKey) {
+                document.getElementById('manualApiKeyInput').value = savedKey;
+            }
         }
 
         function checkExistingPermissions() {
-            log('Checking existing permissions...', 'info');
-
             if (localStorage.getItem('fvp_mic_granted') === 'true') {
-                permissions.mic = true;
-                log('Microphone: Previously granted', 'info');
-                setPermissionSuccess('mic', 'Microphone', 'micCard', 'micBtn', 'micIcon', 'micStatus');
-                document.getElementById('micTestCard').classList.remove('hidden');
-            }
-            if (localStorage.getItem('fvp_speech_granted') === 'true') {
-                permissions.speech = true;
-                log('Speech Recognition: Previously granted', 'info');
-                setPermissionSuccess('speech', 'Speech Recognition', 'speechCard', 'speechBtn', 'speechIcon', 'speechStatus');
-            }
-            if (localStorage.getItem('fvp_loc_granted') === 'true') {
-                permissions.loc = true;
-                log('Location: Previously granted', 'info');
-                setPermissionSuccess('loc', 'Location', 'locCard', 'locBtn', 'locIcon', 'locStatus');
+                permissionResults.mic.status = 'granted';
+                updateManualCard('mic', 'granted');
             }
             if (localStorage.getItem('fvp_cam_granted') === 'true') {
-                permissions.cam = true;
-                log('Camera: Previously granted', 'info');
-                setPermissionSuccess('cam', 'Camera', 'camCard', 'camBtn', 'camIcon', 'camStatus');
+                permissionResults.cam.status = 'granted';
+                updateManualCard('cam', 'granted');
             }
-
-            updateSummary();
+            if (localStorage.getItem('fvp_loc_granted') === 'true') {
+                permissionResults.loc.status = 'granted';
+                updateManualCard('loc', 'granted');
+            }
+            if (localStorage.getItem('fvp_speech_granted') === 'true') {
+                permissionResults.speech.status = 'granted';
+                updateManualCard('speech', 'granted');
+            }
+            updateManualSummary();
         }
 
-        function setPermissionSuccess(key, name, cardId, btnId, iconId, statusId) {
-            const card = document.getElementById(cardId);
-            const btn = document.getElementById(btnId);
-            const icon = document.getElementById(iconId);
-            const status = document.getElementById(statusId);
+        function updateManualCard(type, status) {
+            const card = document.getElementById(`manual-${type}-card`);
+            const icon = document.getElementById(`manual-${type}-icon`);
+            const statusEl = document.getElementById(`manual-${type}-status`);
+            const btn = document.getElementById(`manual-${type}-btn`);
 
-            card.className = 'permission-card bg-white border-2 success';
-            icon.className = 'fas fa-check text-safety-green text-xl';
-            btn.innerHTML = '<i class="fas fa-check"></i>';
-            btn.className = 'px-4 py-2 bg-safety-green text-white font-bold text-xs uppercase cursor-default';
+            if (status === 'granted') {
+                card.classList.add('border-safety-green', 'bg-green-50');
+                card.classList.remove('border-slate-200');
+                icon.className = 'fas fa-check text-safety-green text-lg';
+                statusEl.textContent = 'Enabled';
+                statusEl.className = 'text-xs text-safety-green font-medium';
+                btn.innerHTML = '<i class="fas fa-check"></i>';
+                btn.className = 'px-4 py-2 bg-safety-green text-white font-bold text-xs uppercase cursor-default rounded';
+                btn.disabled = true;
+            } else if (status === 'denied') {
+                card.classList.add('border-red-500', 'bg-red-50');
+                card.classList.remove('border-slate-200');
+                icon.className = 'fas fa-times text-red-500 text-lg';
+                statusEl.textContent = 'Permission denied';
+                statusEl.className = 'text-xs text-red-500';
+                btn.textContent = 'Retry';
+                btn.className = 'px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase transition-colors rounded';
+                btn.disabled = false;
+            }
+        }
+
+        function updateManualSummary() {
+            const icon = document.getElementById('manual-summary-icon');
+            const title = document.getElementById('manual-summary-title');
+            const text = document.getElementById('manual-summary-text');
+
+            const enabledCount = Object.values(permissionResults).filter(r => r.status === 'granted').length;
+
+            if (enabledCount === 4) {
+                icon.className = 'w-10 h-10 bg-safety-green flex items-center justify-center rounded';
+                icon.innerHTML = '<i class="fas fa-check text-white"></i>';
+                title.textContent = 'All Systems Ready';
+                title.className = 'font-bold text-safety-green text-sm uppercase';
+                text.textContent = 'Full functionality enabled';
+                text.className = 'text-xs text-safety-green';
+            } else if (enabledCount >= 2) {
+                icon.className = 'w-10 h-10 bg-dot-orange flex items-center justify-center rounded';
+                icon.innerHTML = '<i class="fas fa-exclamation text-white"></i>';
+                title.textContent = `${enabledCount}/4 Permissions`;
+                title.className = 'font-bold text-dot-orange text-sm uppercase';
+                text.textContent = 'Some features may be limited';
+                text.className = 'text-xs text-dot-orange';
+            } else {
+                icon.className = 'w-10 h-10 bg-slate-200 flex items-center justify-center rounded';
+                icon.innerHTML = '<i class="fas fa-clock text-slate-400"></i>';
+                title.textContent = 'Setup Required';
+                title.className = 'font-bold text-slate-800 text-sm uppercase';
+                text.textContent = 'Enable permissions above';
+                text.className = 'text-xs text-slate-500';
+            }
+        }
+
+        async function manualRequestMic() {
+            const btn = document.getElementById('manual-mic-btn');
+            const status = document.getElementById('manual-mic-status');
+
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             btn.disabled = true;
-            status.textContent = 'Previously enabled';
-            status.className = 'text-sm text-safety-green mt-1 font-medium';
+            status.textContent = 'Requesting...';
+            log('Manual: Requesting microphone...', 'info');
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream.getTracks().forEach(track => track.stop());
+
+                permissionResults.mic.status = 'granted';
+                localStorage.setItem('fvp_mic_granted', 'true');
+                updateManualCard('mic', 'granted');
+                log('Manual: Microphone granted', 'success');
+            } catch (err) {
+                log(`Manual: Microphone error - ${err.message}`, 'error');
+                permissionResults.mic.status = 'denied';
+                updateManualCard('mic', 'denied');
+            }
+            updateManualSummary();
+        }
+
+        async function manualRequestCam() {
+            const btn = document.getElementById('manual-cam-btn');
+            const status = document.getElementById('manual-cam-status');
+
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            btn.disabled = true;
+            status.textContent = 'Requesting...';
+            log('Manual: Requesting camera...', 'info');
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                stream.getTracks().forEach(track => track.stop());
+
+                permissionResults.cam.status = 'granted';
+                localStorage.setItem('fvp_cam_granted', 'true');
+                updateManualCard('cam', 'granted');
+                log('Manual: Camera granted', 'success');
+            } catch (err) {
+                log(`Manual: Camera error - ${err.message}`, 'error');
+                permissionResults.cam.status = 'denied';
+                updateManualCard('cam', 'denied');
+            }
+            updateManualSummary();
+        }
+
+        async function manualRequestLoc() {
+            const btn = document.getElementById('manual-loc-btn');
+            const status = document.getElementById('manual-loc-status');
+
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            btn.disabled = true;
+            status.textContent = 'Getting location...';
+            log('Manual: Requesting location...', 'info');
+
+            try {
+                await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, {
+                        enableHighAccuracy: true,
+                        timeout: 15000,
+                        maximumAge: 0
+                    });
+                });
+
+                permissionResults.loc.status = 'granted';
+                localStorage.setItem('fvp_loc_granted', 'true');
+                updateManualCard('loc', 'granted');
+                log('Manual: Location granted', 'success');
+            } catch (err) {
+                log(`Manual: Location error - ${err.message}`, 'error');
+                permissionResults.loc.status = 'denied';
+                updateManualCard('loc', 'denied');
+            }
+            updateManualSummary();
+        }
+
+        async function manualRequestSpeech() {
+            const btn = document.getElementById('manual-speech-btn');
+            const status = document.getElementById('manual-speech-status');
+
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            btn.disabled = true;
+            status.textContent = 'Testing...';
+            log('Manual: Testing speech recognition...', 'info');
+
+            if (!hasSpeechRecognition) {
+                log('Manual: Speech API not available', 'error');
+                permissionResults.speech.status = 'denied';
+                updateManualCard('speech', 'denied');
+                updateManualSummary();
+                return;
+            }
+
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const rec = new SpeechRecognition();
+            rec.continuous = false;
+            rec.interimResults = false;
+            rec.lang = 'en-US';
+
+            let resolved = false;
+
+            rec.onstart = () => {
+                status.textContent = 'Listening... say something';
+            };
+
+            rec.onresult = () => {
+                if (!resolved) {
+                    resolved = true;
+                    permissionResults.speech.status = 'granted';
+                    localStorage.setItem('fvp_speech_granted', 'true');
+                    updateManualCard('speech', 'granted');
+                    log('Manual: Speech recognition works', 'success');
+                    updateManualSummary();
+                }
+            };
+
+            rec.onend = () => {
+                if (!resolved) {
+                    resolved = true;
+                    // Even if no speech detected, if it started it works
+                    permissionResults.speech.status = 'granted';
+                    localStorage.setItem('fvp_speech_granted', 'true');
+                    updateManualCard('speech', 'granted');
+                    log('Manual: Speech recognition available', 'success');
+                    updateManualSummary();
+                }
+            };
+
+            rec.onerror = (event) => {
+                if (!resolved) {
+                    resolved = true;
+                    log(`Manual: Speech error - ${event.error}`, 'error');
+                    permissionResults.speech.status = 'denied';
+                    updateManualCard('speech', 'denied');
+                    updateManualSummary();
+                }
+            };
+
+            try {
+                rec.start();
+                // Auto-stop after 5 seconds
+                setTimeout(() => {
+                    try { rec.stop(); } catch(e) {}
+                }, 5000);
+            } catch (err) {
+                log(`Manual: Failed to start speech - ${err.message}`, 'error');
+                permissionResults.speech.status = 'denied';
+                updateManualCard('speech', 'denied');
+                updateManualSummary();
+            }
+        }
+
+        // ============ FINISH SETUP ============
+        function finishSetup() {
+            localStorage.setItem('fvp_onboarded', 'true');
+            log('Setup complete - redirecting to dashboard', 'success');
+            window.location.href = 'index.html';
+        }
+
+        // ============ INIT ============
+        function init() {
+            log('=== FieldVoice Pro Permission Setup ===', 'info');
+            log(`iOS: ${isIOS}, Safari: ${isSafari}, Secure: ${isSecureContext}`, 'info');
+            log(`MediaDevices: ${hasMediaDevices}, SpeechRecognition: ${hasSpeechRecognition}`, 'info');
+
+            // Check if already onboarded
+            if (localStorage.getItem('fvp_onboarded') === 'true') {
+                // Check if all permissions still valid
+                const allGranted =
+                    localStorage.getItem('fvp_mic_granted') === 'true' &&
+                    localStorage.getItem('fvp_cam_granted') === 'true' &&
+                    localStorage.getItem('fvp_loc_granted') === 'true' &&
+                    localStorage.getItem('fvp_speech_granted') === 'true';
+
+                if (allGranted) {
+                    log('Already onboarded with all permissions - redirecting', 'info');
+                    // Optional: redirect to dashboard
+                    // window.location.href = 'index.html';
+                }
+            }
         }
 
         document.addEventListener('DOMContentLoaded', init);
